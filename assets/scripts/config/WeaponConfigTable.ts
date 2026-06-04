@@ -44,8 +44,21 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         damage: 2,
         cooldown: 0.35,
         bulletCount: 3,
-        bulletSpacingX: 32,
-        bulletTargetSpreadX: 32,
+        bulletSpacingX: 0,
+        bulletTargetSpreadX: 132,
         shotDelay: 0.04,
+    },
+
+    sugarcane_machine_gun: {
+        id: 'sugarcane_machine_gun',
+        name: '甘蔗机枪',
+        attackType: WeaponAttackType.MultiBullet,
+        projectilePrefabKey: 'sugarcane_bullet_projectile',
+        damage: 3,
+        cooldown: 1,
+        bulletCount: 3,
+        bulletSpacingX: 0,
+        bulletTargetSpreadX: 0,
+        shotDelay: 0.08,
     },
 };
