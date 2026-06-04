@@ -4,10 +4,12 @@ import { AttackContext } from '../base/AttackContext';
 import { AttackHitTracker } from '../base/AttackHitTracker';
 import { AttackPhase } from '../../core/types/AttackTypes';
 import { BoomerangPath } from '../../movement/paths/BoomerangPath';
-import { HitDetector } from '../../combat/HitDetector';
+import { EnemyRegistry } from '../../combat/EnemyRegistry';
 import { HitInfo } from '../../combat/HitInfo';
 import { DamageResolver } from '../../combat/DamageResolver';
 import { DamageInfo } from '../../combat/DamageInfo';
+import { HitSystem } from '../../combat/HitSystem';
+import { PENETRATING_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 
 const { ccclass, property } = _decorator;
 
@@ -34,11 +36,12 @@ export class BoomerangProjectile extends AttackBase {
     @property
     returnDamageScale: number = 1;
 
-    private hitTracker = new AttackHitTracker();
+    private hitTracker = new AttackHitTracker<Node>();
     private path: BoomerangPath | null = null;
+    private previousWorldPos: Vec3 = new Vec3();
 
     public startAttack(context: AttackContext): void {
-        if (!context.target || !context.target.isValid) {
+        if (!context.endWorldPos) {
             this.node.destroy();
             return;
         }
@@ -49,12 +52,13 @@ export class BoomerangProjectile extends AttackBase {
 
         this.path = new BoomerangPath({
             startWorldPos: context.startWorldPos,
-            targetWorldPos: context.target.worldPosition.clone(),
+            targetWorldPos: context.endWorldPos,
             sideOffset: this.sideOffset,
             topOffset: this.topOffset,
         });
 
         this.node.setWorldPosition(context.startWorldPos);
+        this.previousWorldPos = context.startWorldPos.clone();
         this.node.angle = 0;
         this.node.active = true;
 
@@ -76,23 +80,32 @@ export class BoomerangProjectile extends AttackBase {
                     this.node.setWorldPosition(currentWorldPos);
                     this.node.angle -= this.rotateSpeed;
 
-                    this.checkHit(currentWorldPos, phase);
+                    this.checkHit(this.previousWorldPos, currentWorldPos, phase);
+                    this.previousWorldPos = currentWorldPos.clone();
                 },
             })
             .call(() => this.stopAttack())
             .start();
     }
 
-    private checkHit(currentWorldPos: Vec3, phase: AttackPhase) {
-        if (!this.context || !this.context.target || !this.context.target.isValid) return;
+    private checkHit(previousWorldPos: Vec3, currentWorldPos: Vec3, phase: AttackPhase) {
+        if (!this.context) return;
 
-        const target = this.context.target;
-        if (this.hitTracker.hasHit(phase, target)) return;
+        const hits = HitSystem.sampleHits({
+            attackId: this.node.uuid,
+            attacker: this.context.attacker,
+            phase,
+            previousWorldPos,
+            currentWorldPos,
+            sweepRadius: this.hitRadius,
+            policy: PENETRATING_PER_PHASE_POLICY,
+            hitTracker: this.hitTracker,
+        }, EnemyRegistry.getActiveTargets());
 
-        if (!HitDetector.isCircleHit(currentWorldPos, target, this.hitRadius)) return;
-
-        this.hitTracker.markHit(phase, target);
-        this.handleHit(target, currentWorldPos, phase);
+        for (const hit of hits) {
+            this.hitTracker.markHit(phase, hit.target);
+            this.handleHit(hit.target, hit.hitWorldPos, phase);
+        }
     }
 
     private handleHit(target: Node, hitWorldPos: Vec3, phase: AttackPhase) {
@@ -129,6 +142,7 @@ export class BoomerangProjectile extends AttackBase {
         Tween.stopAllByTarget(this.node);
         this.context = null;
         this.path = null;
+        this.previousWorldPos = new Vec3();
         this.hitTracker.clear();
         this.node.destroy();
     }
@@ -137,6 +151,7 @@ export class BoomerangProjectile extends AttackBase {
         Tween.stopAllByTarget(this.node);
         this.context = null;
         this.path = null;
+        this.previousWorldPos = new Vec3();
         this.hitTracker.clear();
     }
 }

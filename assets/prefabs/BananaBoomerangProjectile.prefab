@@ -242,7 +242,7 @@
     "flyDuration": 0.75,
     "returnDuration": 0.65,
     "sideOffset": 220,
-    "topOffset": 100,
+    "topOffset": 0,
     "hitRadius": 60,
     "rotateSpeed": 36,
     "returnDamageScale": 1,

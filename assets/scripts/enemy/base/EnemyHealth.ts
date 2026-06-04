@@ -33,5 +33,6 @@ export class EnemyHealth extends Component implements IDamageable {
 
     private die() {
         console.log('Enemy dead');
+        this.node.destroy();
     }
 }

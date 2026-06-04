@@ -4,9 +4,11 @@ import { AttackContext } from '../base/AttackContext';
 import { AttackHitTracker } from '../base/AttackHitTracker';
 import { AttackPhase } from '../../core/types/AttackTypes';
 import { LinePath } from '../../movement/paths/LinePath';
-import { HitDetector } from '../../combat/HitDetector';
+import { EnemyRegistry } from '../../combat/EnemyRegistry';
 import { HitInfo } from '../../combat/HitInfo';
 import { DamageResolver } from '../../combat/DamageResolver';
+import { FIRST_HIT_PER_PHASE_POLICY } from '../../combat/HitPolicy';
+import { HitSystem } from '../../combat/HitSystem';
 
 const { ccclass, property } = _decorator;
 
@@ -24,9 +26,10 @@ export class StrawberryBulletProjectile extends AttackBase {
     @property
     autoFaceDirection: boolean = true;
 
-    private hitTracker = new AttackHitTracker();
+    private hitTracker = new AttackHitTracker<Node>();
     private path: LinePath | null = null;
     private endWorldPos: Vec3 | null = null;
+    private previousWorldPos: Vec3 = new Vec3();
 
     /**
      * 草莓枪三连发时，每颗子弹可以指定不同终点。
@@ -37,7 +40,9 @@ export class StrawberryBulletProjectile extends AttackBase {
     }
 
     public startAttack(context: AttackContext): void {
-        if (!context.target || !context.target.isValid) {
+        const finalEndWorldPos = this.endWorldPos ?? context.endWorldPos ?? context.target?.worldPosition.clone() ?? null;
+
+        if (!finalEndWorldPos) {
             this.node.destroy();
             return;
         }
@@ -46,10 +51,10 @@ export class StrawberryBulletProjectile extends AttackBase {
         this.isAlive = true;
         this.hitTracker.clear();
 
-        const finalEndWorldPos = this.endWorldPos ?? context.target.worldPosition.clone();
         this.path = new LinePath(context.startWorldPos, finalEndWorldPos);
 
         this.node.setWorldPosition(context.startWorldPos);
+        this.previousWorldPos = context.startWorldPos.clone();
         this.node.active = true;
 
         if (this.autoFaceDirection) {
@@ -70,7 +75,8 @@ export class StrawberryBulletProjectile extends AttackBase {
                         this.node.angle -= this.rotateSpeed;
                     }
 
-                    this.checkHit(currentWorldPos);
+                    this.checkHit(this.previousWorldPos, currentWorldPos);
+                    this.previousWorldPos = currentWorldPos.clone();
                 },
             })
             .call(() => this.stopAttack())
@@ -90,17 +96,26 @@ export class StrawberryBulletProjectile extends AttackBase {
         this.node.angle = radians * 180 / Math.PI;
     }
 
-    private checkHit(currentWorldPos: Vec3): void {
-        if (!this.context || !this.context.target || !this.context.target.isValid) return;
+    private checkHit(previousWorldPos: Vec3, currentWorldPos: Vec3): void {
+        if (!this.context) return;
 
-        const target = this.context.target;
         const phase = AttackPhase.Impact;
+        const hits = HitSystem.sampleHits({
+            attackId: this.node.uuid,
+            attacker: this.context.attacker,
+            phase,
+            previousWorldPos,
+            currentWorldPos,
+            sweepRadius: this.hitRadius,
+            policy: FIRST_HIT_PER_PHASE_POLICY,
+            hitTracker: this.hitTracker,
+        }, EnemyRegistry.getActiveTargets());
 
-        if (this.hitTracker.hasHit(phase, target)) return;
-        if (!HitDetector.isCircleHit(currentWorldPos, target, this.hitRadius)) return;
+        const [firstHit] = hits;
+        if (!firstHit) return;
 
-        this.hitTracker.markHit(phase, target);
-        this.handleHit(target, currentWorldPos, phase);
+        this.hitTracker.markHit(phase, firstHit.target);
+        this.handleHit(firstHit.target, firstHit.hitWorldPos, phase);
     }
 
     private handleHit(target: Node, hitWorldPos: Vec3, phase: AttackPhase): void {
@@ -126,6 +141,7 @@ export class StrawberryBulletProjectile extends AttackBase {
         this.context = null;
         this.path = null;
         this.endWorldPos = null;
+        this.previousWorldPos = new Vec3();
         this.hitTracker.clear();
         this.node.destroy();
     }
@@ -135,6 +151,7 @@ export class StrawberryBulletProjectile extends AttackBase {
         this.context = null;
         this.path = null;
         this.endWorldPos = null;
+        this.previousWorldPos = new Vec3();
         this.hitTracker.clear();
     }
 }

@@ -10,6 +10,6 @@ export class DamageResolver {
         enemyHealth.takeDamage(hitInfo.damageInfo);
 
         const enemyVisual = hitInfo.target.getComponentInChildren(EnemyVisual);
-        enemyVisual?.playHitShake();
+        enemyVisual?.playHitFlash();
     }
 }

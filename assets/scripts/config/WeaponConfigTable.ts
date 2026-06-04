@@ -13,11 +13,13 @@ export interface WeaponConfigData {
 
     /** Boomerang only. Return damage = damage * returnDamageScale. */
     returnDamageScale?: number;
+    boomerangForwardDistance?: number;
 
     /** Multi-bullet only. */
     bulletCount?: number;
     bulletSpacingX?: number;
     bulletTargetSpreadX?: number;
+    bulletTravelDistance?: number;
     shotDelay?: number;
 }
 
@@ -34,6 +36,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         damage: 10,
         cooldown: 1.2,
         returnDamageScale: 1,
+        boomerangForwardDistance: 360,
     },
 
     strawberry_gun: {
@@ -46,7 +49,8 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         bulletCount: 3,
         bulletSpacingX: 0,
         bulletTargetSpreadX: 132,
-        shotDelay: 0.04,
+        bulletTravelDistance: 1280,
+        shotDelay: 0.00,
     },
 
     sugarcane_machine_gun: {
@@ -59,6 +63,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         bulletCount: 3,
         bulletSpacingX: 0,
         bulletTargetSpreadX: 0,
+        bulletTravelDistance: 1280,
         shotDelay: 0.08,
     },
 };

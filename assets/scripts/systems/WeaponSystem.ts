@@ -116,12 +116,6 @@ export class WeaponSystem extends Component {
     private fireBoomerang(config: WeaponConfigData): boolean {
         if (!this.weaponPoint || !this.projectileRoot || !this.prefabRegistry || !this.targetProvider) return false;
 
-        const target = this.targetProvider.getTarget();
-        if (!target) {
-            console.warn('[WeaponSystem] Boomerang has no target');
-            return false;
-        }
-
         const prefab = this.prefabRegistry.getPrefab(config.projectilePrefabKey);
         if (!prefab) return false;
 
@@ -141,8 +135,9 @@ export class WeaponSystem extends Component {
 
         const context = new AttackContext({
             attacker: this.owner ?? this.node,
-            target,
+            target: null,
             startWorldPos: this.weaponPoint.worldPosition.clone(),
+            endWorldPos: this.getBoomerangEndWorldPos(config),
             sourceWeaponId: config.id,
             damageInfo: new DamageInfo({
                 amount: config.damage,
@@ -167,30 +162,32 @@ export class WeaponSystem extends Component {
         const bulletCount = Math.max(1, Math.floor(config.bulletCount ?? 3));
         const bulletSpacingX = config.bulletSpacingX ?? 32;
         const bulletTargetSpreadX = config.bulletTargetSpreadX ?? 32;
+        const bulletTravelDistance = config.bulletTravelDistance ?? 1280;
         const shotDelay = config.shotDelay ?? 0;
         const centerIndex = (bulletCount - 1) / 2;
+        const targetWorldPos = target.worldPosition.clone();
 
         for (let i = 0; i < bulletCount; i++) {
             const offsetIndex = i - centerIndex;
             const delay = shotDelay * i;
+            const aimWorldPos = targetWorldPos.clone();
+            aimWorldPos.x += offsetIndex * bulletTargetSpreadX;
 
             this.scheduleOnce(() => {
-                if (!target.isValid || !this.weaponPoint || !this.weaponPoint.isValid) return;
+                if (!this.weaponPoint || !this.weaponPoint.isValid) return;
 
                 const startWorldPos = this.weaponPoint.worldPosition.clone();
                 startWorldPos.x += offsetIndex * bulletSpacingX;
+                const endWorldPos = this.getBulletEndWorldPos(startWorldPos, aimWorldPos, bulletTravelDistance);
 
-                const endWorldPos = target.worldPosition.clone();
-                endWorldPos.x += offsetIndex * bulletTargetSpreadX;
-
-                this.spawnBullet(config, target, startWorldPos, endWorldPos);
+                this.spawnBullet(config, startWorldPos, endWorldPos, target);
             }, delay);
         }
 
         return true;
     }
 
-    private spawnBullet(config: WeaponConfigData, target: Node, startWorldPos: Vec3, endWorldPos: Vec3): void {
+    private spawnBullet(config: WeaponConfigData, startWorldPos: Vec3, endWorldPos: Vec3, target: Node | null): void {
         if (!this.projectileRoot || !this.prefabRegistry) return;
 
         const prefab = this.prefabRegistry.getPrefab(config.projectilePrefabKey);
@@ -215,8 +212,9 @@ export class WeaponSystem extends Component {
 
         const context = new AttackContext({
             attacker: this.owner ?? this.node,
-            target,
+            target: target?.isValid ? target : null,
             startWorldPos,
+            endWorldPos,
             sourceWeaponId: config.id,
             damageInfo: new DamageInfo({
                 amount: config.damage,
@@ -226,6 +224,28 @@ export class WeaponSystem extends Component {
         });
 
         attack.startAttack(context);
+    }
+
+    private getBoomerangEndWorldPos(config: WeaponConfigData): Vec3 {
+        const startWorldPos = this.weaponPoint?.worldPosition.clone() ?? new Vec3();
+        startWorldPos.y += config.boomerangForwardDistance ?? 360;
+        return startWorldPos;
+    }
+
+    private getBulletEndWorldPos(startWorldPos: Vec3, aimWorldPos: Vec3, travelDistance: number): Vec3 {
+        const dx = aimWorldPos.x - startWorldPos.x;
+        const dy = aimWorldPos.y - startWorldPos.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+
+        if (length <= 0) {
+            return new Vec3(startWorldPos.x, startWorldPos.y + travelDistance, startWorldPos.z);
+        }
+
+        return new Vec3(
+            startWorldPos.x + dx / length * travelDistance,
+            startWorldPos.y + dy / length * travelDistance,
+            startWorldPos.z
+        );
     }
 
     private canFire(config: WeaponConfigData): boolean {
