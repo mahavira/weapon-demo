@@ -1,6 +1,6 @@
 import type { Node } from 'cc';
-import { AttackPhase } from '../../core/types/AttackTypes';
-import { HitDedupeMode } from '../../combat/HitPolicy';
+import { AttackPhase } from '../../core/types/AttackTypes.ts';
+import { HitDedupeMode } from '../../combat/HitPolicy.ts';
 import type { HitPolicy } from '../../combat/HitPolicy.ts';
 
 export class AttackHitTracker<TTarget extends object = Node> {

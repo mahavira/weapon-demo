@@ -1,5 +1,7 @@
 import { _decorator, Component, UITransform, Vec3 } from 'cc';
 import { EnemyRegistry } from '../../combat/EnemyRegistry';
+import { TargetabilityState } from '../../combat/TargetabilityState';
+import { DamageChannel } from '../../core/types/DamageChannel';
 
 const { ccclass, property } = _decorator;
 
@@ -10,6 +12,8 @@ export class Hurtbox extends Component {
 
     @property(Vec3)
     centerOffset: Vec3 = new Vec3();
+
+    private readonly targetabilityState = new TargetabilityState();
 
     protected onEnable(): void {
         EnemyRegistry.register(this.node, this);
@@ -46,6 +50,30 @@ export class Hurtbox extends Component {
 
     public getHitRadius(): number {
         return this.hitRadius;
+    }
+
+    public canBeTargeted(): boolean {
+        return this.targetabilityState.canBeTargeted();
+    }
+
+    public setTargetable(isTargetable: boolean): void {
+        this.targetabilityState.setTargetable(isTargetable);
+    }
+
+    public canBeHitBy(channel: DamageChannel): boolean {
+        return this.targetabilityState.canBeHitBy(channel);
+    }
+
+    public setDamageChannelAllowed(channel: DamageChannel, isAllowed: boolean): void {
+        this.targetabilityState.setDamageChannelAllowed(channel, isAllowed);
+    }
+
+    public applyNormalCombatProfile(): void {
+        this.targetabilityState.applyNormalCombatProfile();
+    }
+
+    public applyAreaOnlyCombatProfile(): void {
+        this.targetabilityState.applyAreaOnlyCombatProfile();
     }
 
     private getPrimaryTransform(): UITransform | null {

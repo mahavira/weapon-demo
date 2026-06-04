@@ -9,6 +9,7 @@ import { HitInfo } from '../../combat/HitInfo';
 import { DamageResolver } from '../../combat/DamageResolver';
 import { FIRST_HIT_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { HitSystem } from '../../combat/HitSystem';
+import { DamageChannel } from '../../core/types/DamageChannel';
 
 const { ccclass, property } = _decorator;
 
@@ -107,9 +108,10 @@ export class StrawberryBulletProjectile extends AttackBase {
             previousWorldPos,
             currentWorldPos,
             sweepRadius: this.hitRadius,
+            damageChannel: DamageChannel.Projectile,
             policy: FIRST_HIT_PER_PHASE_POLICY,
             hitTracker: this.hitTracker,
-        }, EnemyRegistry.getActiveTargets());
+        }, EnemyRegistry.getDamageableTargets(DamageChannel.Projectile));
 
         const [firstHit] = hits;
         if (!firstHit) return;

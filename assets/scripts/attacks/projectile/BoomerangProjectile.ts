@@ -10,6 +10,7 @@ import { DamageResolver } from '../../combat/DamageResolver';
 import { DamageInfo } from '../../combat/DamageInfo';
 import { HitSystem } from '../../combat/HitSystem';
 import { PENETRATING_PER_PHASE_POLICY } from '../../combat/HitPolicy';
+import { DamageChannel } from '../../core/types/DamageChannel';
 
 const { ccclass, property } = _decorator;
 
@@ -98,9 +99,10 @@ export class BoomerangProjectile extends AttackBase {
             previousWorldPos,
             currentWorldPos,
             sweepRadius: this.hitRadius,
+            damageChannel: DamageChannel.Projectile,
             policy: PENETRATING_PER_PHASE_POLICY,
             hitTracker: this.hitTracker,
-        }, EnemyRegistry.getActiveTargets());
+        }, EnemyRegistry.getDamageableTargets(DamageChannel.Projectile));
 
         for (const hit of hits) {
             this.hitTracker.markHit(phase, hit.target);

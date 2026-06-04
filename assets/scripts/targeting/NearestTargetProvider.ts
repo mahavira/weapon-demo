@@ -1,7 +1,6 @@
 import { _decorator, Component, EventTouch, input, Input, instantiate, Node, UITransform, Vec3 } from 'cc';
 import { ITargetProvider } from '../core/interfaces/ITargetProvider';
 import { EnemyRegistry } from '../combat/EnemyRegistry';
-import { Hurtbox } from '../enemy/base/Hurtbox';
 
 const { ccclass, property } = _decorator;
 
@@ -53,7 +52,7 @@ export class NearestTargetProvider extends Component implements ITargetProvider 
         let bestDistSq = Number.MAX_VALUE;
         const fromPos = this.fromNode.worldPosition;
 
-        for (const hurtbox of EnemyRegistry.getActiveTargets()) {
+        for (const hurtbox of EnemyRegistry.getTargetableTargets()) {
             const enemy = hurtbox.node;
             if (!enemy || !enemy.isValid) continue;
 
@@ -78,7 +77,7 @@ export class NearestTargetProvider extends Component implements ITargetProvider 
         const centerPos = center.worldPosition;
         const rangeSq = range * range;
 
-        for (const hurtbox of EnemyRegistry.getActiveTargets()) {
+        for (const hurtbox of EnemyRegistry.getTargetableTargets()) {
             const enemy = hurtbox.node;
             if (!enemy || !enemy.isValid) continue;
 
@@ -121,7 +120,7 @@ export class NearestTargetProvider extends Component implements ITargetProvider 
 
     private pruneInvalidEnemies(): void {
         const activeNodes = new Set(
-            EnemyRegistry.getActiveTargets().map((hurtbox: Hurtbox) => hurtbox.node)
+            EnemyRegistry.getActiveTargets().map((hurtbox) => hurtbox.node)
         );
 
         this.enemies = this.enemies.filter((enemy) => enemy && enemy.isValid && activeNodes.has(enemy));

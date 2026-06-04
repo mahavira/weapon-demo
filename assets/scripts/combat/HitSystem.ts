@@ -4,12 +4,14 @@ import { HitSample } from './HitSample';
 import { HitResult } from './HitResult';
 import { HitStopMode } from './HitPolicy';
 import { HitDetector } from './HitDetector';
+import { EnemyRegistry } from './EnemyRegistry';
 
 export class HitSystem {
-    public static sampleHits(sample: HitSample, targets: readonly Hurtbox[]): HitResult[] {
+    public static sampleHits(sample: HitSample, targets?: readonly Hurtbox[]): HitResult[] {
         const results: HitResult[] = [];
+        const queryTargets = targets ?? EnemyRegistry.getDamageableTargets(sample.damageChannel);
 
-        for (const hurtbox of targets) {
+        for (const hurtbox of queryTargets) {
             const target = hurtbox.node;
             if (!target || !target.isValid || target === sample.attacker) continue;
             if (sample.hitTracker.hasHit(sample.phase, target, sample.policy)) continue;
