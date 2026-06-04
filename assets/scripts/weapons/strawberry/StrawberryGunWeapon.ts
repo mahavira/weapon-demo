@@ -9,6 +9,10 @@ import { NearestTargetProvider } from '../../targeting/NearestTargetProvider';
 
 const { ccclass, property } = _decorator;
 
+/**
+ * @deprecated Prefer WeaponSystem with WeaponAttackType.MultiBullet.
+ * This component is kept for existing direct weapon bindings.
+ */
 @ccclass('StrawberryGunWeapon')
 export class StrawberryGunWeapon extends WeaponBase {
     @property(Node)

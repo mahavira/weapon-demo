@@ -3,6 +3,10 @@ import { WeaponBase } from '../weapons/base/WeaponBase';
 
 const { ccclass, property } = _decorator;
 
+/**
+ * @deprecated Prefer WeaponIdButtonBinder or WeaponSystemButtonBinder.
+ * This binder is kept for existing WeaponBase bindings.
+ */
 @ccclass('FireButtonBinder')
 export class FireButtonBinder extends Component {
     @property(Button)

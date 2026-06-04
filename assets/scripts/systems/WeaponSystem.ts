@@ -2,13 +2,17 @@ import { _decorator, Component, Node, instantiate, Vec3 } from 'cc';
 import { WeaponConfigData, WeaponConfigTable, WeaponAttackType } from '../config/WeaponConfigTable';
 import { PrefabRegistry } from '../registry/PrefabRegistry';
 import { NearestTargetProvider } from '../targeting/NearestTargetProvider';
+import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
-import { StrawberryBulletProjectile } from '../attacks/projectile/StrawberryBulletProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
 
 const { ccclass, property } = _decorator;
+
+type EndpointAttack = AttackBase & {
+    setEndWorldPos(endWorldPos: Vec3): void;
+};
 
 /**
  * One unified weapon entry point.
@@ -38,6 +42,8 @@ export class WeaponSystem extends Component {
     @property(NearestTargetProvider)
     targetProvider: NearestTargetProvider | null = null;
 
+    private nextFireTimeByWeaponId: Record<string, number> = {};
+
     public setCurrentWeapon(weaponId: string): void {
         if (!WeaponConfigTable[weaponId]) {
             console.error(`[WeaponSystem] Unknown weapon id: ${weaponId}`);
@@ -60,24 +66,26 @@ export class WeaponSystem extends Component {
             return;
         }
 
-        this.fireByConfig(config);
+        if (!this.canFire(config)) return;
+
+        if (this.fireByConfig(config)) {
+            this.markCooldown(config);
+        }
     }
 
-    private fireByConfig(config: WeaponConfigData): void {
-        if (!this.validateCommonRefs()) return;
+    private fireByConfig(config: WeaponConfigData): boolean {
+        if (!this.validateCommonRefs()) return false;
 
         switch (config.attackType) {
             case WeaponAttackType.Boomerang:
-                this.fireBoomerang(config);
-                break;
+                return this.fireBoomerang(config);
 
             case WeaponAttackType.MultiBullet:
-                this.fireMultiBullet(config);
-                break;
+                return this.fireMultiBullet(config);
 
             default:
                 console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
-                break;
+                return false;
         }
     }
 
@@ -105,30 +113,30 @@ export class WeaponSystem extends Component {
         return true;
     }
 
-    private fireBoomerang(config: WeaponConfigData): void {
-        if (!this.weaponPoint || !this.projectileRoot || !this.prefabRegistry || !this.targetProvider) return;
+    private fireBoomerang(config: WeaponConfigData): boolean {
+        if (!this.weaponPoint || !this.projectileRoot || !this.prefabRegistry || !this.targetProvider) return false;
 
         const target = this.targetProvider.getTarget();
         if (!target) {
             console.warn('[WeaponSystem] Boomerang has no target');
-            return;
+            return false;
         }
 
         const prefab = this.prefabRegistry.getPrefab(config.projectilePrefabKey);
-        if (!prefab) return;
+        if (!prefab) return false;
 
         const node = instantiate(prefab);
         this.projectileRoot.addChild(node);
 
-        const attack = node.getComponent(BoomerangProjectile);
+        const attack = this.getAttackComponent(node, config.projectilePrefabKey);
         if (!attack) {
-            console.error('[WeaponSystem] Boomerang prefab missing BoomerangProjectile');
             node.destroy();
-            return;
+            return false;
         }
 
-        if (config.returnDamageScale !== undefined) {
-            attack.returnDamageScale = config.returnDamageScale;
+        const boomerangAttack = node.getComponent(BoomerangProjectile);
+        if (boomerangAttack && config.returnDamageScale !== undefined) {
+            boomerangAttack.returnDamageScale = config.returnDamageScale;
         }
 
         const context = new AttackContext({
@@ -144,15 +152,16 @@ export class WeaponSystem extends Component {
         });
 
         attack.startAttack(context);
+        return true;
     }
 
-    private fireMultiBullet(config: WeaponConfigData): void {
-        if (!this.weaponPoint || !this.targetProvider) return;
+    private fireMultiBullet(config: WeaponConfigData): boolean {
+        if (!this.weaponPoint || !this.targetProvider) return false;
 
         const target = this.targetProvider.getTarget();
         if (!target) {
             console.warn('[WeaponSystem] MultiBullet has no target');
-            return;
+            return false;
         }
 
         const bulletCount = Math.max(1, Math.floor(config.bulletCount ?? 3));
@@ -177,6 +186,8 @@ export class WeaponSystem extends Component {
                 this.spawnBullet(config, target, startWorldPos, endWorldPos);
             }, delay);
         }
+
+        return true;
     }
 
     private spawnBullet(config: WeaponConfigData, target: Node, startWorldPos: Vec3, endWorldPos: Vec3): void {
@@ -188,9 +199,14 @@ export class WeaponSystem extends Component {
         const node = instantiate(prefab);
         this.projectileRoot.addChild(node);
 
-        const attack = node.getComponent(StrawberryBulletProjectile);
+        const attack = this.getAttackComponent(node, config.projectilePrefabKey);
         if (!attack) {
-            console.error('[WeaponSystem] Bullet prefab missing StrawberryBulletProjectile');
+            node.destroy();
+            return;
+        }
+
+        if (!this.canSetEndWorldPos(attack)) {
+            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support setEndWorldPos`);
             node.destroy();
             return;
         }
@@ -210,5 +226,50 @@ export class WeaponSystem extends Component {
         });
 
         attack.startAttack(context);
+    }
+
+    private canFire(config: WeaponConfigData): boolean {
+        const cooldown = config.cooldown ?? 0;
+        if (cooldown <= 0) return true;
+
+        const now = Date.now() / 1000;
+        const nextFireTime = this.nextFireTimeByWeaponId[config.id] ?? 0;
+
+        if (now < nextFireTime) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private markCooldown(config: WeaponConfigData): void {
+        const cooldown = config.cooldown ?? 0;
+        if (cooldown <= 0) return;
+
+        this.nextFireTimeByWeaponId[config.id] = Date.now() / 1000 + cooldown;
+    }
+
+    private getAttackComponent(node: Node, prefabKey: string): AttackBase | null {
+        const attack = node.getComponents(Component).find((component) => this.isAttackBase(component));
+        if (!attack) {
+            console.error(`[WeaponSystem] Prefab ${prefabKey} missing AttackBase component`);
+            return null;
+        }
+
+        return attack;
+    }
+
+    private canSetEndWorldPos(attack: AttackBase): attack is EndpointAttack {
+        return typeof (attack as { setEndWorldPos?: unknown }).setEndWorldPos === 'function';
+    }
+
+    private isAttackBase(component: Component): component is AttackBase {
+        const candidate = component as {
+            startAttack?: unknown;
+            stopAttack?: unknown;
+        };
+
+        return typeof candidate.startAttack === 'function'
+            && typeof candidate.stopAttack === 'function';
     }
 }

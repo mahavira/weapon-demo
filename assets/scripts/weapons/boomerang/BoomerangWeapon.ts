@@ -9,6 +9,10 @@ import { NearestTargetProvider } from '../../targeting/NearestTargetProvider';
 
 const { ccclass, property } = _decorator;
 
+/**
+ * @deprecated Prefer WeaponSystem with WeaponAttackType.Boomerang.
+ * This component is kept for existing direct weapon bindings.
+ */
 @ccclass('BoomerangWeapon')
 export class BoomerangWeapon extends WeaponBase {
     @property(Node)

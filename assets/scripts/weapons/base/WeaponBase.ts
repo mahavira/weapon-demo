@@ -3,6 +3,10 @@ import { WeaponContext } from './WeaponContext';
 
 const { ccclass, property } = _decorator;
 
+/**
+ * @deprecated Prefer WeaponSystem + WeaponConfigTable for new weapons.
+ * This base class is kept for existing scene/script compatibility.
+ */
 @ccclass('WeaponBase')
 export abstract class WeaponBase extends Component {
     @property
