@@ -239,18 +239,18 @@
     "__prefab": {
       "__id__": 11
     },
-    "flyDuration": 0,
-    "returnDuration": 0,
-    "sideOffset": 0,
-    "topOffset": 0,
-    "hitRadius": 0,
-    "rotateSpeed": 0,
-    "returnDamageScale": 0,
+    "flyDuration": 0.75,
+    "returnDuration": 0.65,
+    "sideOffset": 220,
+    "topOffset": 100,
+    "hitRadius": 60,
+    "rotateSpeed": 36,
+    "returnDamageScale": 1,
     "_id": ""
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "5fYvwfadxEyYfRaZtLgpjc"
+    "fileId": "81Tw11dP9KDrhnDm7wH3ZK"
   },
   {
     "__type__": "cc.PrefabInfo",

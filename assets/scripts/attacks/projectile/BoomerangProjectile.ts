@@ -13,18 +13,25 @@ const { ccclass, property } = _decorator;
 
 @ccclass('BoomerangProjectile')
 export class BoomerangProjectile extends AttackBase {
-    flyDuration: number = 3.75;
+    @property
+    flyDuration: number = 0.75;
 
-    returnDuration: number = 3.65;
+    @property
+    returnDuration: number = 0.65;
 
-    sideOffset: number = 440;
+    @property
+    sideOffset: number = 220;
 
-    topOffset: number = 500;
+    @property
+    topOffset: number = 100;
 
-    hitRadius: number = 50;
+    @property
+    hitRadius: number = 60;
 
+    @property
     rotateSpeed: number = 36;
 
+    @property
     returnDamageScale: number = 1;
 
     private hitTracker = new AttackHitTracker();

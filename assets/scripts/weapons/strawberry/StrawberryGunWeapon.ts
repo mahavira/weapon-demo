@@ -30,13 +30,13 @@ export class StrawberryGunWeapon extends WeaponBase {
     bulletCount: number = 3;
 
     @property
-    bulletSpacingX: number = 32;
+    bulletSpacingX: number = 232;
 
     @property
-    bulletTargetSpreadX: number = 32;
+    bulletTargetSpreadX: number = 132;
 
     @property
-    shotDelay: number = 0.04;
+    shotDelay: number = 0;
 
     public fire(context?: WeaponContext): void {
         const firePoint = context?.firePoint ?? this.weaponPoint;
