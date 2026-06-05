@@ -1,4 +1,4 @@
-import { _decorator, Vec3, tween, Tween, Node } from 'cc';
+import { _decorator, Vec3, tween, Tween, Node, UITransform, view } from 'cc';
 import { AttackBase } from '../base/AttackBase';
 import { AttackContext } from '../base/AttackContext';
 import { AttackHitTracker } from '../base/AttackHitTracker';
@@ -11,6 +11,7 @@ import { DamageInfo } from '../../combat/DamageInfo';
 import { HitSystem } from '../../combat/HitSystem';
 import { PENETRATING_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { DamageChannel } from '../../core/types/DamageChannel';
+import { isRectFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 
 const { ccclass, property } = _decorator;
 
@@ -36,6 +37,9 @@ export class BoomerangProjectile extends AttackBase {
 
     @property
     returnDamageScale: number = 1;
+
+    @property
+    destroyWhenExitVisibleArea: boolean = true;
 
     private hitTracker = new AttackHitTracker<Node>();
     private path: BoomerangPath | null = null;
@@ -80,6 +84,11 @@ export class BoomerangProjectile extends AttackBase {
                     const currentWorldPos = this.path.getPosition(phase, t);
                     this.node.setWorldPosition(currentWorldPos);
                     this.node.angle -= this.rotateSpeed;
+
+                    if (this.shouldDestroyForVisibleArea()) {
+                        this.stopAttack();
+                        return;
+                    }
 
                     this.checkHit(this.previousWorldPos, currentWorldPos, phase);
                     this.previousWorldPos = currentWorldPos.clone();
@@ -137,6 +146,27 @@ export class BoomerangProjectile extends AttackBase {
         }
 
         return this.context.damageInfo;
+    }
+
+    private shouldDestroyForVisibleArea(): boolean {
+        if (!this.destroyWhenExitVisibleArea) {
+            return false;
+        }
+
+        const uiTransform = this.node.getComponent(UITransform);
+        if (!uiTransform) {
+            return false;
+        }
+
+        const visibleOrigin = view.getVisibleOrigin();
+        const visibleSize = view.getVisibleSize();
+
+        return isRectFullyOutsideVisibleArea(uiTransform.getBoundingBoxToWorld(), {
+            x: visibleOrigin.x,
+            y: visibleOrigin.y,
+            width: visibleSize.width,
+            height: visibleSize.height,
+        });
     }
 
     public stopAttack(): void {

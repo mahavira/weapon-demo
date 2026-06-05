@@ -1,4 +1,4 @@
-import { _decorator, Vec3, tween, Tween, Node } from 'cc';
+import { _decorator, Vec3, tween, Tween, Node, UITransform, view } from 'cc';
 import { AttackBase } from '../base/AttackBase';
 import { AttackContext } from '../base/AttackContext';
 import { AttackHitTracker } from '../base/AttackHitTracker';
@@ -10,6 +10,7 @@ import { DamageResolver } from '../../combat/DamageResolver';
 import { FIRST_HIT_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { HitSystem } from '../../combat/HitSystem';
 import { DamageChannel } from '../../core/types/DamageChannel';
+import { isRectFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 
 const { ccclass, property } = _decorator;
 
@@ -26,6 +27,9 @@ export class StrawberryBulletProjectile extends AttackBase {
 
     @property
     autoFaceDirection: boolean = true;
+
+    @property
+    destroyWhenExitVisibleArea: boolean = true;
 
     private hitTracker = new AttackHitTracker<Node>();
     private path: LinePath | null = null;
@@ -74,6 +78,11 @@ export class StrawberryBulletProjectile extends AttackBase {
 
                     if (this.rotateSpeed !== 0) {
                         this.node.angle -= this.rotateSpeed;
+                    }
+
+                    if (this.shouldDestroyForVisibleArea()) {
+                        this.stopAttack();
+                        return;
                     }
 
                     this.checkHit(this.previousWorldPos, currentWorldPos);
@@ -133,6 +142,27 @@ export class StrawberryBulletProjectile extends AttackBase {
 
         DamageResolver.applyDamage(hitInfo);
         this.stopAttack();
+    }
+
+    private shouldDestroyForVisibleArea(): boolean {
+        if (!this.destroyWhenExitVisibleArea) {
+            return false;
+        }
+
+        const uiTransform = this.node.getComponent(UITransform);
+        if (!uiTransform) {
+            return false;
+        }
+
+        const visibleOrigin = view.getVisibleOrigin();
+        const visibleSize = view.getVisibleSize();
+
+        return isRectFullyOutsideVisibleArea(uiTransform.getBoundingBoxToWorld(), {
+            x: visibleOrigin.x,
+            y: visibleOrigin.y,
+            width: visibleSize.width,
+            height: visibleSize.height,
+        });
     }
 
     public stopAttack(): void {
