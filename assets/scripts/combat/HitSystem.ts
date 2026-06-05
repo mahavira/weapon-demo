@@ -13,7 +13,7 @@ export class HitSystem {
 
         for (const hurtbox of queryTargets) {
             const target = hurtbox.node;
-            if (!target || !target.isValid || target === sample.attacker) continue;
+            if (!target || !target.isValid || target === sample.attackerNode) continue;
             if (sample.hitTracker.hasHit(sample.phase, target, sample.policy)) continue;
 
             const hit = HitDetector.sweepCircleAgainstTarget(

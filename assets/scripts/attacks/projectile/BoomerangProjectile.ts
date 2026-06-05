@@ -103,7 +103,7 @@ export class BoomerangProjectile extends AttackBase {
 
         const hits = HitSystem.sampleHits({
             attackId: this.node.uuid,
-            attacker: this.attackContext.attackerNode,
+            attackerNode: this.attackContext.attackerNode,
             phase,
             previousWorldPos,
             currentWorldPos,
@@ -124,10 +124,10 @@ export class BoomerangProjectile extends AttackBase {
 
         const damageInfo = this.createPhaseDamageInfo(phase);
         const hitInfo = new HitInfo({
-            attacker: this.attackContext.attackerNode,
-            target,
+            attackerNode: this.attackContext.attackerNode,
+            targetNode: target,
             hitWorldPos: hitWorldPos.clone(),
-            damageInfo,
+            attackDamage: damageInfo,
             phase,
         });
 

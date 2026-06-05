@@ -154,10 +154,10 @@ export class ChiliBombProjectile extends AttackBase implements ProjectileDestina
             }
 
             const hitInfo = new HitInfo({
-                attacker: this.attackContext.attackerNode,
-                target,
+                attackerNode: this.attackContext.attackerNode,
+                targetNode: target,
                 hitWorldPos: hitWorldPos.clone(),
-                damageInfo: this.attackContext.attackDamage,
+                attackDamage: this.attackContext.attackDamage,
                 phase,
             });
 

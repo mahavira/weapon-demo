@@ -108,10 +108,10 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
         if (!this.attackContext) return;
 
         const hitInfo = new HitInfo({
-            attacker: this.attackContext.attackerNode,
-            target,
+            attackerNode: this.attackContext.attackerNode,
+            targetNode: target,
             hitWorldPos: hitWorldPos.clone(),
-            damageInfo: this.attackContext.attackDamage,
+            attackDamage: this.attackContext.attackDamage,
             phase,
         });
 
@@ -134,7 +134,7 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
         const phase = AttackPhase.Impact;
         const hits = HitSystem.sampleHits({
             attackId: this.node.uuid,
-            attacker: this.attackContext.attackerNode,
+            attackerNode: this.attackContext.attackerNode,
             phase,
             previousWorldPos,
             currentWorldPos,

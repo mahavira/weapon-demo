@@ -6,7 +6,7 @@ import type { HitPolicy } from './HitPolicy';
 
 export interface HitSample {
     attackId: string;
-    attacker: Node;
+    attackerNode: Node;
     phase: AttackPhase;
     previousWorldPos: Vec3;
     currentWorldPos: Vec3;
