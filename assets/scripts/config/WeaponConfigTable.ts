@@ -136,8 +136,8 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         beam: {
             durationSeconds: 3,
             tickIntervalSeconds: 0.25,
-            beamWidth: 52,
-            beamRange: 920,
+            beamWidth: 18,
+            beamRange: 1020,
             followTarget: true,
         },
     },

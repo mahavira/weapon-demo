@@ -39,10 +39,10 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
     tickIntervalSeconds: number = 0.25;
 
     @property
-    beamWidth: number = 52;
+    beamWidth: number = 18;
 
     @property
-    beamRange: number = 920;
+    beamRange: number = 1020;
 
     @property
     followTarget: boolean = true;
@@ -250,6 +250,7 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         const startupRatio = this.buildStartupRatio();
         const startupBeamScale = 0.35 + startupRatio * 0.65;
 
+        console.log(this.beamWidth, Math.max(8, this.beamWidth * 1.05 * pulseRatio * startupBeamScale))
         this.drawBeamLayer(
             this.node.getChildByName(MAIN_BEAM_LAYER_NAME),
             this.mainBeamGraphics,
