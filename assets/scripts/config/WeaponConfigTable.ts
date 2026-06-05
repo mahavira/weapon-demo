@@ -1,6 +1,7 @@
 export enum WeaponAttackType {
     Boomerang = 'boomerang',
     Projectile = 'projectile',
+    Beam = 'beam',
 }
 
 export interface WeaponBoomerangConfig {
@@ -25,6 +26,14 @@ export interface WeaponProjectileImpactConfig {
     aoeRadius?: number;
 }
 
+export interface WeaponBeamConfig {
+    durationSeconds?: number;
+    tickIntervalSeconds?: number;
+    beamWidth?: number;
+    beamRange?: number;
+    followTarget?: boolean;
+}
+
 export interface WeaponConfigData {
     id: string;
     name: string;
@@ -37,6 +46,7 @@ export interface WeaponConfigData {
     volley?: WeaponProjectileVolleyConfig;
     flight?: WeaponProjectileFlightConfig;
     impact?: WeaponProjectileImpactConfig;
+    beam?: WeaponBeamConfig;
 }
 
 /**
@@ -113,6 +123,22 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
         flight: {
             travelDistance: 1280,
+        },
+    },
+
+    sunflower_spotlight_mirror: {
+        id: 'sunflower_spotlight_mirror',
+        name: '向日葵聚光镜',
+        attackType: WeaponAttackType.Beam,
+        projectilePrefabKey: 'sunflower_spotlight_mirror_beam',
+        damage: 48,
+        cooldown: 4,
+        beam: {
+            durationSeconds: 3,
+            tickIntervalSeconds: 0.25,
+            beamWidth: 52,
+            beamRange: 920,
+            followTarget: true,
         },
     },
 };

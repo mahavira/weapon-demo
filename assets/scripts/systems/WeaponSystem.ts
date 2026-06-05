@@ -4,6 +4,7 @@ import { PrefabRegistry } from '../registry/PrefabRegistry';
 import { NearestTargetProvider } from '../targeting/NearestTargetProvider';
 import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
+import { isBeamRuntimeConfigReceiver, isBeamTargetProviderReceiver } from '../attacks/BeamAttackContract';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
@@ -93,6 +94,9 @@ export class WeaponSystem extends Component {
             case WeaponAttackType.Projectile:
                 return this.fireProjectileAttack(config);
 
+            case WeaponAttackType.Beam:
+                return this.fireBeamAttack(config);
+
             default:
                 console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
                 return false;
@@ -170,6 +174,41 @@ export class WeaponSystem extends Component {
             }, shot.delay);
         }
 
+        return true;
+    }
+
+    private fireBeamAttack(config: WeaponConfigData): boolean {
+        if (!this.weaponPoint || !this.targetProvider) return false;
+
+        const primaryTarget = this.targetProvider.getPrimaryTarget();
+        if (!primaryTarget) {
+            console.warn('[WeaponSystem] Beam attack has no target');
+            return false;
+        }
+
+        const spawnedAttack = this.createAttackInstance(config);
+        if (!spawnedAttack) {
+            return false;
+        }
+
+        const { node, attack } = spawnedAttack;
+        if (!isBeamRuntimeConfigReceiver(attack) || !isBeamTargetProviderReceiver(attack)) {
+            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support beam runtime config`);
+            node.destroy();
+            return false;
+        }
+
+        attack.setBeamConfig(config.beam ?? {});
+        attack.setBeamTargetProvider(this.targetProvider);
+
+        const context = this.buildAttackContext(
+            config,
+            this.weaponPoint.worldPosition.clone(),
+            primaryTarget.worldPosition.clone(),
+            primaryTarget
+        );
+
+        attack.startAttack(context);
         return true;
     }
 
@@ -287,14 +326,16 @@ export class WeaponSystem extends Component {
             spawnWorldPos,
             destinationWorldPos,
             sourceWeaponId: config.id,
-            attackDamage: this.buildProjectileDamageInfo(config),
+            attackDamage: this.buildAttackDamageInfo(config),
         });
     }
 
-    private buildProjectileDamageInfo(config: WeaponConfigData): DamageInfo {
+    private buildAttackDamageInfo(config: WeaponConfigData): DamageInfo {
         return new DamageInfo({
             amount: config.damage,
-            sourceType: DamageSourceType.Projectile,
+            sourceType: config.attackType === WeaponAttackType.Beam
+                ? DamageSourceType.Beam
+                : DamageSourceType.Projectile,
             sourceWeaponId: config.id,
         });
     }

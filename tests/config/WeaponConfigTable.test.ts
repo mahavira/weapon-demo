@@ -13,3 +13,18 @@ test('chili bomb is configured as a single exploding projectile', () => {
     assert.equal(config.projectilePrefabKey, 'chili_bomb_projectile');
     assert.equal(config.flight?.endAtTarget, true);
 });
+
+test('sunflower spotlight mirror is configured as a beam weapon', () => {
+    const config = WeaponConfigTable.sunflower_spotlight_mirror;
+
+    assert.ok(config);
+    assert.equal(config.attackType, WeaponAttackType.Beam);
+    assert.equal(config.damage, 48);
+    assert.equal(config.cooldown, 4);
+    assert.equal(config.projectilePrefabKey, 'sunflower_spotlight_mirror_beam');
+    assert.equal(config.beam?.durationSeconds, 3);
+    assert.equal(config.beam?.tickIntervalSeconds, 0.25);
+    assert.equal(config.beam?.beamWidth, 52);
+    assert.equal(config.beam?.beamRange, 920);
+    assert.equal(config.beam?.followTarget, true);
+});
