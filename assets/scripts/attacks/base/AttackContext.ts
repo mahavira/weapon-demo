@@ -2,26 +2,26 @@ import { Node, Vec3 } from 'cc';
 import { DamageInfo } from '../../combat/DamageInfo';
 
 export class AttackContext {
-    public attacker: Node;
-    public target: Node | null;
-    public startWorldPos: Vec3;
-    public endWorldPos: Vec3 | null;
-    public damageInfo: DamageInfo;
+    public attackerNode: Node;
+    public targetNode: Node | null;
+    public spawnWorldPos: Vec3;
+    public destinationWorldPos: Vec3 | null;
+    public attackDamage: DamageInfo;
     public sourceWeaponId: string;
 
     constructor(params: {
-        attacker: Node;
-        target: Node | null;
-        startWorldPos: Vec3;
-        endWorldPos?: Vec3 | null;
-        damageInfo: DamageInfo;
+        attackerNode: Node;
+        targetNode: Node | null;
+        spawnWorldPos: Vec3;
+        destinationWorldPos?: Vec3 | null;
+        attackDamage: DamageInfo;
         sourceWeaponId: string;
     }) {
-        this.attacker = params.attacker;
-        this.target = params.target;
-        this.startWorldPos = params.startWorldPos;
-        this.endWorldPos = params.endWorldPos?.clone() ?? null;
-        this.damageInfo = params.damageInfo;
+        this.attackerNode = params.attackerNode;
+        this.targetNode = params.targetNode;
+        this.spawnWorldPos = params.spawnWorldPos.clone();
+        this.destinationWorldPos = params.destinationWorldPos?.clone() ?? null;
+        this.attackDamage = params.attackDamage;
         this.sourceWeaponId = params.sourceWeaponId;
     }
 }

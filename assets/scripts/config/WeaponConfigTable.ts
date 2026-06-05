@@ -1,6 +1,6 @@
 export enum WeaponAttackType {
     Boomerang = 'boomerang',
-    MultiBullet = 'multi_bullet',
+    Projectile = 'projectile',
 }
 
 export interface WeaponBoomerangConfig {
@@ -60,7 +60,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
     strawberry_gun: {
         id: 'strawberry_gun',
         name: '草莓枪',
-        attackType: WeaponAttackType.MultiBullet,
+        attackType: WeaponAttackType.Projectile,
         projectilePrefabKey: 'strawberry_bullet_projectile',
         damage: 2,
         cooldown: 0.35,
@@ -78,7 +78,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
     chili_bomb: {
         id: 'chili_bomb',
         name: '辣椒炸弹',
-        attackType: WeaponAttackType.MultiBullet,
+        attackType: WeaponAttackType.Projectile,
         projectilePrefabKey: 'chili_bomb_projectile',
         damage: 16,
         cooldown: 0.9,
@@ -101,7 +101,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
     sugarcane_machine_gun: {
         id: 'sugarcane_machine_gun',
         name: '甘蔗机枪',
-        attackType: WeaponAttackType.MultiBullet,
+        attackType: WeaponAttackType.Projectile,
         projectilePrefabKey: 'sugarcane_bullet_projectile',
         damage: 3,
         cooldown: 1,

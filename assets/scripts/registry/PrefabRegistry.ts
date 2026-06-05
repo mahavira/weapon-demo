@@ -5,36 +5,36 @@ const { ccclass, property } = _decorator;
 
 /**
  * Minimal prefab registry.
- * Keep keys and prefabs aligned by index in the Inspector.
+ * Keep prefabKeys and registeredPrefabs aligned by index in the Inspector.
  *
  * Example:
- * keys[0] = banana_boomerang_projectile
- * prefabs[0] = BananaBoomerangProjectile.prefab
+ * prefabKeys[0] = banana_boomerang_projectile
+ * registeredPrefabs[0] = BananaBoomerangProjectile.prefab
  */
 @ccclass('PrefabRegistry')
 export class PrefabRegistry extends Component {
     @property([String])
-    keys: string[] = [];
+    prefabKeys: string[] = [];
 
     @property([Prefab])
-    prefabs: Prefab[] = [];
+    registeredPrefabs: Prefab[] = [];
 
     protected onLoad(): void {
-        this.validate();
+        this.validateRegistryEntries();
     }
 
-    public validate(): boolean {
+    public validateRegistryEntries(): boolean {
         let isValid = true;
 
-        if (this.keys.length !== this.prefabs.length) {
-            console.error(`[PrefabRegistry] keys/prefabs length mismatch: ${this.keys.length}/${this.prefabs.length}`);
+        if (this.prefabKeys.length !== this.registeredPrefabs.length) {
+            console.error(`[PrefabRegistry] prefabKeys/registeredPrefabs length mismatch: ${this.prefabKeys.length}/${this.registeredPrefabs.length}`);
             isValid = false;
         }
 
         const seenKeys = new Set<string>();
 
-        for (let i = 0; i < this.keys.length; i++) {
-            const key = this.keys[i];
+        for (let i = 0; i < this.prefabKeys.length; i++) {
+            const key = this.prefabKeys[i];
 
             if (!key) {
                 console.error(`[PrefabRegistry] Empty key at index ${i}`);
@@ -49,7 +49,7 @@ export class PrefabRegistry extends Component {
 
             seenKeys.add(key);
 
-            if (!this.prefabs[i]) {
+            if (!this.registeredPrefabs[i]) {
                 console.error(`[PrefabRegistry] Empty prefab for key: ${key}`);
                 isValid = false;
             }
@@ -67,15 +67,15 @@ export class PrefabRegistry extends Component {
         return isValid;
     }
 
-    public getPrefab(key: string): Prefab | null {
-        const index = this.keys.indexOf(key);
+    public getPrefabByKey(key: string): Prefab | null {
+        const index = this.findPrefabIndexByKey(key);
 
         if (index < 0) {
             console.error(`[PrefabRegistry] Missing prefab key: ${key}`);
             return null;
         }
 
-        const prefab = this.prefabs[index];
+        const prefab = this.registeredPrefabs[index];
 
         if (!prefab) {
             console.error(`[PrefabRegistry] Empty prefab for key: ${key}`);
@@ -83,5 +83,9 @@ export class PrefabRegistry extends Component {
         }
 
         return prefab;
+    }
+
+    private findPrefabIndexByKey(key: string): number {
+        return this.prefabKeys.indexOf(key);
     }
 }

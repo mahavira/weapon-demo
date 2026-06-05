@@ -10,11 +10,12 @@ import { MathUtils } from '../../core/utils/MathUtils';
 import { spawnRadialExplosionBurst } from '../../effects/ProceduralExplosionEffect';
 import { ArcPath } from '../../movement/paths/ArcPath';
 import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
+import { AreaImpactRadiusReceiver, ProjectileDestinationReceiver } from '../base/ProjectileAttackContract';
 
 const { ccclass, property } = _decorator;
 
 @ccclass('ChiliBombProjectile')
-export class ChiliBombProjectile extends AttackBase {
+export class ChiliBombProjectile extends AttackBase implements ProjectileDestinationReceiver, AreaImpactRadiusReceiver {
     @property
     flyDuration: number = 1.5;
 
@@ -31,32 +32,35 @@ export class ChiliBombProjectile extends AttackBase {
     destroyWhenExitVisibleArea: boolean = true;
 
     private impactAoeRadius: number = 0;
-    private endWorldPos: Vec3 | null = null;
+    private landingWorldPos: Vec3 | null = null;
     private path: ArcPath | null = null;
     private previousWorldPos: Vec3 = new Vec3();
 
-    public setEndWorldPos(endWorldPos: Vec3): void {
-        this.endWorldPos = endWorldPos.clone();
+    public setDestinationWorldPos(destinationWorldPos: Vec3): void {
+        this.landingWorldPos = destinationWorldPos.clone();
     }
 
-    public setImpactAoeRadius(radius: number): void {
+    public setAreaImpactRadius(radius: number): void {
         this.impactAoeRadius = Math.max(0, radius);
     }
 
     public startAttack(context: AttackContext): void {
-        const finalEndWorldPos = this.endWorldPos ?? context.endWorldPos ?? context.target?.worldPosition.clone() ?? null;
+        const finalLandingWorldPos = this.landingWorldPos
+            ?? context.destinationWorldPos
+            ?? context.targetNode?.worldPosition.clone()
+            ?? null;
 
-        if (!finalEndWorldPos) {
+        if (!finalLandingWorldPos) {
             this.node.destroy();
             return;
         }
 
-        this.context = context;
-        this.isAlive = true;
-        this.path = new ArcPath(context.startWorldPos, finalEndWorldPos, this.arcHeight);
-        this.previousWorldPos = context.startWorldPos.clone();
+        this.attackContext = context;
+        this.isAttackActive = true;
+        this.path = new ArcPath(context.spawnWorldPos, finalLandingWorldPos, this.arcHeight);
+        this.previousWorldPos = context.spawnWorldPos.clone();
 
-        this.node.setWorldPosition(context.startWorldPos);
+        this.node.setWorldPosition(context.spawnWorldPos);
         this.node.active = true;
 
         Tween.stopAllByTarget(this.node);
@@ -64,7 +68,7 @@ export class ChiliBombProjectile extends AttackBase {
         tween(this.node)
             .to(this.flyDuration, {}, {
                 onUpdate: (_target, ratio: number) => {
-                    if (!this.isAlive || !this.context || !this.path) return;
+                    if (!this.isAttackActive || !this.attackContext || !this.path) return;
 
                     const currentWorldPos = this.path.getPosition(ratio);
                     this.node.setWorldPosition(currentWorldPos);
@@ -84,12 +88,12 @@ export class ChiliBombProjectile extends AttackBase {
                 },
             })
             .call(() => {
-                if (!this.context || !this.endWorldPos) {
+                if (!this.attackContext || !this.landingWorldPos) {
                     this.stopAttack();
                     return;
                 }
 
-                this.applyExplosionAtWorldPos(this.endWorldPos, AttackPhase.Impact);
+                this.applyExplosionAtWorldPos(this.landingWorldPos, AttackPhase.Impact);
                 this.stopAttack();
             })
             .start();
@@ -120,28 +124,28 @@ export class ChiliBombProjectile extends AttackBase {
     private cleanupRuntimeState(): void {
         Tween.stopAllByTarget(this.node);
         this.impactAoeRadius = 0;
-        this.endWorldPos = null;
+        this.landingWorldPos = null;
         this.path = null;
         this.previousWorldPos = new Vec3();
-        this.context = null;
-        this.isAlive = false;
+        this.attackContext = null;
+        this.isAttackActive = false;
     }
 
     private applyExplosionAtWorldPos(hitWorldPos: Vec3, phase: AttackPhase): void {
-        if (!this.context) return;
+        if (!this.attackContext) return;
 
         this.spawnExplosionBurstVisual(hitWorldPos);
         this.applyExplosionDamageAtWorldPos(hitWorldPos, phase);
     }
 
     private applyExplosionDamageAtWorldPos(hitWorldPos: Vec3, phase: AttackPhase): void {
-        if (!this.context) return;
+        if (!this.attackContext) return;
 
         const targets = EnemyRegistry.getDamageableTargets(DamageChannel.Area);
 
         for (const hurtbox of targets) {
             const target = hurtbox.node;
-            if (!target || !target.isValid || target === this.context.attacker) continue;
+            if (!target || !target.isValid || target === this.attackContext.attackerNode) continue;
 
             const center = hurtbox.getWorldCenter();
             const combinedRadius = this.impactAoeRadius + hurtbox.getHitRadius();
@@ -150,10 +154,10 @@ export class ChiliBombProjectile extends AttackBase {
             }
 
             const hitInfo = new HitInfo({
-                attacker: this.context.attacker,
+                attacker: this.attackContext.attackerNode,
                 target,
                 hitWorldPos: hitWorldPos.clone(),
-                damageInfo: this.context.damageInfo,
+                damageInfo: this.attackContext.attackDamage,
                 phase,
             });
 

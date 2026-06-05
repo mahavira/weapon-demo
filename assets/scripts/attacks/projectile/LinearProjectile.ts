@@ -2,6 +2,7 @@ import { _decorator, Node, Tween, UITransform, Vec3, tween, view } from 'cc';
 import { AttackBase } from '../base/AttackBase';
 import { AttackContext } from '../base/AttackContext';
 import { AttackHitTracker } from '../base/AttackHitTracker';
+import { ProjectileDestinationReceiver } from '../base/ProjectileAttackContract';
 import { AttackPhase } from '../../core/types/AttackTypes';
 import { LinePath } from '../../movement/paths/LinePath';
 import { EnemyRegistry } from '../../combat/EnemyRegistry';
@@ -15,7 +16,7 @@ import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileV
 const { ccclass, property } = _decorator;
 
 @ccclass('LinearProjectile')
-export abstract class LinearProjectile extends AttackBase {
+export abstract class LinearProjectile extends AttackBase implements ProjectileDestinationReceiver {
     @property
     flyDuration: number = 0.32;
 
@@ -33,33 +34,36 @@ export abstract class LinearProjectile extends AttackBase {
 
     private hitTracker = new AttackHitTracker<Node>();
     private path: LinePath | null = null;
-    private endWorldPos: Vec3 | null = null;
+    private destinationWorldPos: Vec3 | null = null;
     private previousWorldPos: Vec3 = new Vec3();
 
-    public setEndWorldPos(endWorldPos: Vec3): void {
-        this.endWorldPos = endWorldPos.clone();
+    public setDestinationWorldPos(destinationWorldPos: Vec3): void {
+        this.destinationWorldPos = destinationWorldPos.clone();
     }
 
     public startAttack(context: AttackContext): void {
-        const finalEndWorldPos = this.endWorldPos ?? context.endWorldPos ?? context.target?.worldPosition.clone() ?? null;
+        const finalDestinationWorldPos = this.destinationWorldPos
+            ?? context.destinationWorldPos
+            ?? context.targetNode?.worldPosition.clone()
+            ?? null;
 
-        if (!finalEndWorldPos) {
+        if (!finalDestinationWorldPos) {
             this.node.destroy();
             return;
         }
 
-        this.context = context;
-        this.isAlive = true;
+        this.attackContext = context;
+        this.isAttackActive = true;
         this.hitTracker.clear();
 
-        this.path = new LinePath(context.startWorldPos, finalEndWorldPos);
+        this.path = new LinePath(context.spawnWorldPos, finalDestinationWorldPos);
 
-        this.node.setWorldPosition(context.startWorldPos);
-        this.previousWorldPos = context.startWorldPos.clone();
+        this.node.setWorldPosition(context.spawnWorldPos);
+        this.previousWorldPos = context.spawnWorldPos.clone();
         this.node.active = true;
 
         if (this.autoFaceDirection) {
-            this.faceTo(finalEndWorldPos);
+            this.faceTo(finalDestinationWorldPos);
         }
 
         Tween.stopAllByTarget(this.node);
@@ -67,7 +71,7 @@ export abstract class LinearProjectile extends AttackBase {
         tween(this.node)
             .to(this.flyDuration, {}, {
                 onUpdate: (_target, ratio: number) => {
-                    if (!this.isAlive || !this.context || !this.path) return;
+                    if (!this.isAttackActive || !this.attackContext || !this.path) return;
 
                     const currentWorldPos = this.path.getPosition(ratio);
                     this.node.setWorldPosition(currentWorldPos);
@@ -101,13 +105,13 @@ export abstract class LinearProjectile extends AttackBase {
     }
 
     protected applyDamageToTarget(target: Node, hitWorldPos: Vec3, phase: AttackPhase): void {
-        if (!this.context) return;
+        if (!this.attackContext) return;
 
         const hitInfo = new HitInfo({
-            attacker: this.context.attacker,
+            attacker: this.attackContext.attackerNode,
             target,
             hitWorldPos: hitWorldPos.clone(),
-            damageInfo: this.context.damageInfo,
+            damageInfo: this.attackContext.attackDamage,
             phase,
         });
 
@@ -116,21 +120,21 @@ export abstract class LinearProjectile extends AttackBase {
 
     protected abstract onFirstHit(target: Node, hitWorldPos: Vec3, phase: AttackPhase): void;
 
-    private faceTo(endWorldPos: Vec3): void {
+    private faceTo(destinationWorldPos: Vec3): void {
         const current = this.node.worldPosition;
-        const dx = endWorldPos.x - current.x;
-        const dy = endWorldPos.y - current.y;
+        const dx = destinationWorldPos.x - current.x;
+        const dy = destinationWorldPos.y - current.y;
         const radians = Math.atan2(dy, dx);
         this.node.angle = radians * 180 / Math.PI;
     }
 
     private checkHit(previousWorldPos: Vec3, currentWorldPos: Vec3): void {
-        if (!this.context) return;
+        if (!this.attackContext) return;
 
         const phase = AttackPhase.Impact;
         const hits = HitSystem.sampleHits({
             attackId: this.node.uuid,
-            attacker: this.context.attacker,
+            attacker: this.attackContext.attackerNode,
             phase,
             previousWorldPos,
             currentWorldPos,
@@ -157,11 +161,11 @@ export abstract class LinearProjectile extends AttackBase {
     }
 
     private cleanupRuntimeState(): void {
-        this.isAlive = false;
+        this.isAttackActive = false;
         Tween.stopAllByTarget(this.node);
-        this.context = null;
+        this.attackContext = null;
         this.path = null;
-        this.endWorldPos = null;
+        this.destinationWorldPos = null;
         this.previousWorldPos = new Vec3();
         this.hitTracker.clear();
     }

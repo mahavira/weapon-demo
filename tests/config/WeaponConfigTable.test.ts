@@ -6,7 +6,7 @@ test('chili bomb is configured as a single exploding projectile', () => {
     const config = WeaponConfigTable.chili_bomb;
 
     assert.ok(config);
-    assert.equal(config.attackType, WeaponAttackType.MultiBullet);
+    assert.equal(config.attackType, WeaponAttackType.Projectile);
     assert.equal(config.volley?.count, 1);
     assert.equal(config.damage, 16);
     assert.equal(config.impact?.aoeRadius, 80);

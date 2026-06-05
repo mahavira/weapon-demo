@@ -5,9 +5,9 @@ const { ccclass } = _decorator;
 
 @ccclass('AttackBase')
 export abstract class AttackBase extends Component {
-    protected context: AttackContext | null = null;
-    protected isAlive: boolean = false;
+    protected attackContext: AttackContext | null = null;
+    protected isAttackActive: boolean = false;
 
-    public abstract startAttack(context: AttackContext): void;
+    public abstract startAttack(attackContext: AttackContext): void;
     public abstract stopAttack(): void;
 }

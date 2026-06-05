@@ -4,18 +4,17 @@ import { PrefabRegistry } from '../registry/PrefabRegistry';
 import { NearestTargetProvider } from '../targeting/NearestTargetProvider';
 import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
+import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
 
 const { ccclass, property } = _decorator;
 
-type ProjectileWithEndpoint = AttackBase & {
-    setEndWorldPos(endWorldPos: Vec3): void;
-};
-
-type ProjectileWithAreaImpact = AttackBase & {
-    setImpactAoeRadius(radius: number): void;
+type ProjectileShotPlan = {
+    delay: number;
+    startOffsetX: number;
+    aimWorldPos: Vec3;
 };
 
 /**
@@ -91,8 +90,8 @@ export class WeaponSystem extends Component {
             case WeaponAttackType.Boomerang:
                 return this.fireBoomerang(config);
 
-            case WeaponAttackType.MultiBullet:
-                return this.fireProjectileVolley(config);
+            case WeaponAttackType.Projectile:
+                return this.fireProjectileAttack(config);
 
             default:
                 console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
@@ -127,69 +126,54 @@ export class WeaponSystem extends Component {
     private fireBoomerang(config: WeaponConfigData): boolean {
         if (!this.weaponPoint || !this.projectileRoot || !this.prefabRegistry || !this.targetProvider) return false;
 
-        const prefab = this.prefabRegistry.getPrefab(config.projectilePrefabKey);
-        if (!prefab) return false;
-
-        const node = instantiate(prefab);
-        this.projectileRoot.addChild(node);
-
-        const attack = this.getAttackComponent(node, config.projectilePrefabKey);
-        if (!attack) {
-            node.destroy();
+        const spawnedAttack = this.createAttackInstance(config);
+        if (!spawnedAttack) {
             return false;
         }
+
+        const { node, attack } = spawnedAttack;
 
         const boomerangAttack = node.getComponent(BoomerangProjectile);
         if (boomerangAttack && config.boomerang?.returnDamageScale !== undefined) {
             boomerangAttack.returnDamageScale = config.boomerang.returnDamageScale;
         }
 
-        const context = new AttackContext({
-            attacker: this.owner ?? this.node,
-            target: null,
-            startWorldPos: this.weaponPoint.worldPosition.clone(),
-            endWorldPos: this.getBoomerangEndWorldPos(config),
-            sourceWeaponId: config.id,
-            damageInfo: new DamageInfo({
-                amount: config.damage,
-                sourceType: DamageSourceType.Projectile,
-                sourceWeaponId: config.id,
-            }),
-        });
+        const context = this.buildAttackContext(
+            config,
+            this.weaponPoint.worldPosition.clone(),
+            this.getBoomerangForwardDestinationWorldPos(config),
+            null
+        );
 
         attack.startAttack(context);
         return true;
     }
 
-    private fireProjectileVolley(config: WeaponConfigData): boolean {
+    private fireProjectileAttack(config: WeaponConfigData): boolean {
         if (!this.weaponPoint || !this.targetProvider) return false;
 
-        const target = this.targetProvider.getTarget();
-        if (!target) {
-            console.warn('[WeaponSystem] Projectile volley has no target');
+        const primaryTarget = this.targetProvider.getPrimaryTarget();
+        if (!primaryTarget) {
+            console.warn('[WeaponSystem] Projectile attack has no target');
             return false;
         }
 
-        for (const shot of this.buildProjectileVolleyShots(config, target.worldPosition.clone())) {
+        for (const shot of this.buildProjectileShotPlans(config, primaryTarget.worldPosition.clone())) {
             this.scheduleOnce(() => {
                 if (!this.weaponPoint || !this.weaponPoint.isValid) return;
 
-                const startWorldPos = this.weaponPoint.worldPosition.clone();
-                startWorldPos.x += shot.startOffsetX;
-                const endWorldPos = this.resolveProjectileDestination(config, startWorldPos, shot.aimWorldPos);
+                const spawnWorldPos = this.weaponPoint.worldPosition.clone();
+                spawnWorldPos.x += shot.startOffsetX;
+                const destinationWorldPos = this.resolveProjectileDestinationWorldPos(config, spawnWorldPos, shot.aimWorldPos);
 
-                this.spawnProjectileShot(config, startWorldPos, endWorldPos, target);
+                this.spawnProjectileShot(config, spawnWorldPos, destinationWorldPos, primaryTarget);
             }, shot.delay);
         }
 
         return true;
     }
 
-    private buildProjectileVolleyShots(config: WeaponConfigData, targetWorldPos: Vec3): Array<{
-        delay: number;
-        startOffsetX: number;
-        aimWorldPos: Vec3;
-    }> {
+    private buildProjectileShotPlans(config: WeaponConfigData, targetWorldPos: Vec3): ProjectileShotPlan[] {
         const projectileCount = Math.max(1, Math.floor(config.volley?.count ?? WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT));
         const projectileSpacingX = config.volley?.spacingX ?? WeaponSystem.DEFAULT_PROJECTILE_SPACING_X;
         const projectileTargetSpreadX = config.volley?.targetSpreadX ?? WeaponSystem.DEFAULT_PROJECTILE_TARGET_SPREAD_X;
@@ -209,23 +193,74 @@ export class WeaponSystem extends Component {
         });
     }
 
-    private resolveProjectileDestination(config: WeaponConfigData, startWorldPos: Vec3, aimWorldPos: Vec3): Vec3 {
+    private resolveProjectileDestinationWorldPos(config: WeaponConfigData, spawnWorldPos: Vec3, aimWorldPos: Vec3): Vec3 {
         if (config.flight?.endAtTarget) {
             return aimWorldPos.clone();
         }
 
-        return this.buildExtendedProjectileDestination(
-            startWorldPos,
+        return this.buildExtendedProjectileDestinationWorldPos(
+            spawnWorldPos,
             aimWorldPos,
             config.flight?.travelDistance ?? WeaponSystem.DEFAULT_PROJECTILE_TRAVEL_DISTANCE
         );
     }
 
-    private spawnProjectileShot(config: WeaponConfigData, startWorldPos: Vec3, endWorldPos: Vec3, target: Node | null): void {
-        if (!this.projectileRoot || !this.prefabRegistry) return;
+    private spawnProjectileShot(
+        config: WeaponConfigData,
+        spawnWorldPos: Vec3,
+        destinationWorldPos: Vec3,
+        target: Node | null
+    ): void {
+        const spawnedAttack = this.createConfiguredProjectileAttack(
+            config,
+            destinationWorldPos,
+            config.impact?.aoeRadius ?? 0
+        );
+        if (!spawnedAttack) {
+            return;
+        }
 
-        const prefab = this.prefabRegistry.getPrefab(config.projectilePrefabKey);
-        if (!prefab) return;
+        const { attack } = spawnedAttack;
+        const context = this.buildAttackContext(config, spawnWorldPos, destinationWorldPos, target);
+
+        attack.startAttack(context);
+    }
+
+    private createConfiguredProjectileAttack(
+        config: WeaponConfigData,
+        destinationWorldPos: Vec3,
+        areaImpactRadius: number
+    ): { node: Node; attack: AttackBase } | null {
+        const spawnedAttack = this.createAttackInstance(config);
+        if (!spawnedAttack) {
+            return null;
+        }
+
+        const { node, attack } = spawnedAttack;
+        if (!isProjectileDestinationReceiver(attack)) {
+            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support setDestinationWorldPos`);
+            node.destroy();
+            return null;
+        }
+
+        attack.setDestinationWorldPos(destinationWorldPos);
+
+        if (isAreaImpactRadiusReceiver(attack)) {
+            attack.setAreaImpactRadius(areaImpactRadius);
+        }
+
+        return spawnedAttack;
+    }
+
+    private createAttackInstance(config: WeaponConfigData): { node: Node; attack: AttackBase } | null {
+        if (!this.projectileRoot || !this.prefabRegistry) {
+            return null;
+        }
+
+        const prefab = this.prefabRegistry.getPrefabByKey(config.projectilePrefabKey);
+        if (!prefab) {
+            return null;
+        }
 
         const node = instantiate(prefab);
         this.projectileRoot.addChild(node);
@@ -234,56 +269,55 @@ export class WeaponSystem extends Component {
         const attack = this.getAttackComponent(node, config.projectilePrefabKey);
         if (!attack) {
             node.destroy();
-            return;
+            return null;
         }
 
-        if (!this.supportsProjectileEndpoint(attack)) {
-            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support setEndWorldPos`);
-            node.destroy();
-            return;
-        }
+        return { node, attack };
+    }
 
-        attack.setEndWorldPos(endWorldPos);
-
-        if (this.supportsAreaImpactRadius(attack)) {
-            attack.setImpactAoeRadius(config.impact?.aoeRadius ?? 0);
-        }
-
-        const context = new AttackContext({
-            attacker: this.owner ?? this.node,
-            target: target?.isValid ? target : null,
-            startWorldPos,
-            endWorldPos,
+    private buildAttackContext(
+        config: WeaponConfigData,
+        spawnWorldPos: Vec3,
+        destinationWorldPos: Vec3 | null,
+        target: Node | null
+    ): AttackContext {
+        return new AttackContext({
+            attackerNode: this.owner ?? this.node,
+            targetNode: target?.isValid ? target : null,
+            spawnWorldPos,
+            destinationWorldPos,
             sourceWeaponId: config.id,
-            damageInfo: new DamageInfo({
-                amount: config.damage,
-                sourceType: DamageSourceType.Projectile,
-                sourceWeaponId: config.id,
-            }),
+            attackDamage: this.buildProjectileDamageInfo(config),
         });
-
-        attack.startAttack(context);
     }
 
-    private getBoomerangEndWorldPos(config: WeaponConfigData): Vec3 {
-        const startWorldPos = this.weaponPoint?.worldPosition.clone() ?? new Vec3();
-        startWorldPos.y += config.boomerang?.forwardDistance ?? 360;
-        return startWorldPos;
+    private buildProjectileDamageInfo(config: WeaponConfigData): DamageInfo {
+        return new DamageInfo({
+            amount: config.damage,
+            sourceType: DamageSourceType.Projectile,
+            sourceWeaponId: config.id,
+        });
     }
 
-    private buildExtendedProjectileDestination(startWorldPos: Vec3, aimWorldPos: Vec3, travelDistance: number): Vec3 {
-        const dx = aimWorldPos.x - startWorldPos.x;
-        const dy = aimWorldPos.y - startWorldPos.y;
+    private getBoomerangForwardDestinationWorldPos(config: WeaponConfigData): Vec3 {
+        const destinationWorldPos = this.weaponPoint?.worldPosition.clone() ?? new Vec3();
+        destinationWorldPos.y += config.boomerang?.forwardDistance ?? 360;
+        return destinationWorldPos;
+    }
+
+    private buildExtendedProjectileDestinationWorldPos(spawnWorldPos: Vec3, aimWorldPos: Vec3, travelDistance: number): Vec3 {
+        const dx = aimWorldPos.x - spawnWorldPos.x;
+        const dy = aimWorldPos.y - spawnWorldPos.y;
         const length = Math.sqrt(dx * dx + dy * dy);
 
         if (length <= 0) {
-            return new Vec3(startWorldPos.x, startWorldPos.y + travelDistance, startWorldPos.z);
+            return new Vec3(spawnWorldPos.x, spawnWorldPos.y + travelDistance, spawnWorldPos.z);
         }
 
         return new Vec3(
-            startWorldPos.x + dx / length * travelDistance,
-            startWorldPos.y + dy / length * travelDistance,
-            startWorldPos.z
+            spawnWorldPos.x + dx / length * travelDistance,
+            spawnWorldPos.y + dy / length * travelDistance,
+            spawnWorldPos.z
         );
     }
 
@@ -316,14 +350,6 @@ export class WeaponSystem extends Component {
         }
 
         return attack;
-    }
-
-    private supportsProjectileEndpoint(attack: AttackBase): attack is ProjectileWithEndpoint {
-        return typeof (attack as { setEndWorldPos?: unknown }).setEndWorldPos === 'function';
-    }
-
-    private supportsAreaImpactRadius(attack: AttackBase): attack is ProjectileWithAreaImpact {
-        return typeof (attack as { setImpactAoeRadius?: unknown }).setImpactAoeRadius === 'function';
     }
 
     private isAttackBase(component: Component): component is AttackBase {

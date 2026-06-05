@@ -46,24 +46,24 @@ export class BoomerangProjectile extends AttackBase {
     private previousWorldPos: Vec3 = new Vec3();
 
     public startAttack(context: AttackContext): void {
-        if (!context.endWorldPos) {
+        if (!context.destinationWorldPos) {
             this.node.destroy();
             return;
         }
 
-        this.context = context;
-        this.isAlive = true;
+        this.attackContext = context;
+        this.isAttackActive = true;
         this.hitTracker.clear();
 
         this.path = new BoomerangPath({
-            startWorldPos: context.startWorldPos,
-            targetWorldPos: context.endWorldPos,
+            startWorldPos: context.spawnWorldPos,
+            targetWorldPos: context.destinationWorldPos,
             sideOffset: this.sideOffset,
             topOffset: this.topOffset,
         });
 
-        this.node.setWorldPosition(context.startWorldPos);
-        this.previousWorldPos = context.startWorldPos.clone();
+        this.node.setWorldPosition(context.spawnWorldPos);
+        this.previousWorldPos = context.spawnWorldPos.clone();
         this.node.angle = 0;
         this.node.active = true;
 
@@ -73,7 +73,7 @@ export class BoomerangProjectile extends AttackBase {
         tween(this.node)
             .to(totalDuration, {}, {
                 onUpdate: (_target, ratio: number) => {
-                    if (!this.isAlive || !this.context || !this.path) return;
+                    if (!this.isAttackActive || !this.attackContext || !this.path) return;
 
                     const elapsed = ratio * totalDuration;
                     const phase = elapsed <= this.flyDuration ? AttackPhase.Forward : AttackPhase.Return;
@@ -99,11 +99,11 @@ export class BoomerangProjectile extends AttackBase {
     }
 
     private checkHit(previousWorldPos: Vec3, currentWorldPos: Vec3, phase: AttackPhase) {
-        if (!this.context) return;
+        if (!this.attackContext) return;
 
         const hits = HitSystem.sampleHits({
             attackId: this.node.uuid,
-            attacker: this.context.attacker,
+            attacker: this.attackContext.attackerNode,
             phase,
             previousWorldPos,
             currentWorldPos,
@@ -120,11 +120,11 @@ export class BoomerangProjectile extends AttackBase {
     }
 
     private handleHit(target: Node, hitWorldPos: Vec3, phase: AttackPhase) {
-        if (!this.context) return;
+        if (!this.attackContext) return;
 
         const damageInfo = this.createPhaseDamageInfo(phase);
         const hitInfo = new HitInfo({
-            attacker: this.context.attacker,
+            attacker: this.attackContext.attackerNode,
             target,
             hitWorldPos: hitWorldPos.clone(),
             damageInfo,
@@ -135,17 +135,17 @@ export class BoomerangProjectile extends AttackBase {
     }
 
     private createPhaseDamageInfo(phase: AttackPhase): DamageInfo {
-        if (!this.context) {
+        if (!this.attackContext) {
             throw new Error('BoomerangProjectile missing context');
         }
 
         if (phase === AttackPhase.Return) {
-            return this.context.damageInfo.cloneWithAmount(
-                Math.floor(this.context.damageInfo.amount * this.returnDamageScale)
+            return this.attackContext.attackDamage.cloneWithAmount(
+                Math.floor(this.attackContext.attackDamage.amount * this.returnDamageScale)
             );
         }
 
-        return this.context.damageInfo;
+        return this.attackContext.attackDamage;
     }
 
     private shouldCullOutsideVisibleArea(): boolean {
@@ -167,9 +167,9 @@ export class BoomerangProjectile extends AttackBase {
     }
 
     private cleanupRuntimeState(): void {
-        this.isAlive = false;
+        this.isAttackActive = false;
         Tween.stopAllByTarget(this.node);
-        this.context = null;
+        this.attackContext = null;
         this.path = null;
         this.previousWorldPos = new Vec3();
         this.hitTracker.clear();
