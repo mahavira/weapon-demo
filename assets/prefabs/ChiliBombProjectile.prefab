@@ -239,7 +239,7 @@
     "__prefab": {
       "__id__": 11
     },
-    "flyDuration": 1.5,
+    "travelSpeed": 640,
     "arcHeight": 280,
     "rotateSpeed": 18,
     "autoFaceDirection": true,

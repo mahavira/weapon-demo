@@ -17,7 +17,7 @@ const { ccclass, property } = _decorator;
 @ccclass('ChiliBombProjectile')
 export class ChiliBombProjectile extends AttackBase implements ProjectileDestinationReceiver, AreaImpactRadiusReceiver {
     @property
-    flyDuration: number = 1.5;
+    travelSpeed: number = 640;
 
     @property
     arcHeight: number = 280;
@@ -63,10 +63,11 @@ export class ChiliBombProjectile extends AttackBase implements ProjectileDestina
         this.node.setWorldPosition(context.spawnWorldPos);
         this.node.active = true;
 
+        const travelDuration = this.buildTravelDuration();
         Tween.stopAllByTarget(this.node);
 
         tween(this.node)
-            .to(this.flyDuration, {}, {
+            .to(travelDuration, {}, {
                 onUpdate: (_target, ratio: number) => {
                     if (!this.isAttackActive || !this.attackContext || !this.path) return;
 
@@ -119,6 +120,29 @@ export class ChiliBombProjectile extends AttackBase implements ProjectileDestina
         }
 
         this.node.angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    }
+
+    private buildTravelDuration(): number {
+        const estimatedDistance = this.estimateArcTravelDistance();
+        const safeTravelSpeed = Math.max(1, this.travelSpeed);
+        return Math.max(0.01, estimatedDistance / safeTravelSpeed);
+    }
+
+    private estimateArcTravelDistance(sampleCount: number = 16): number {
+        if (!this.path) {
+            return 0;
+        }
+
+        let distance = 0;
+        let previousWorldPos = this.path.getPosition(0);
+
+        for (let index = 1; index <= sampleCount; index++) {
+            const currentWorldPos = this.path.getPosition(index / sampleCount);
+            distance += Vec3.distance(previousWorldPos, currentWorldPos);
+            previousWorldPos = currentWorldPos;
+        }
+
+        return distance;
     }
 
     private cleanupRuntimeState(): void {

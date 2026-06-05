@@ -18,7 +18,7 @@ const { ccclass, property } = _decorator;
 @ccclass('BoomerangProjectile')
 export class BoomerangProjectile extends AttackBase {
     @property
-    flyDuration: number = 0.75;
+    forwardTravelDuration: number = 0.75;
 
     @property
     returnDuration: number = 0.65;
@@ -67,7 +67,7 @@ export class BoomerangProjectile extends AttackBase {
         this.node.angle = 0;
         this.node.active = true;
 
-        const totalDuration = this.flyDuration + this.returnDuration;
+        const totalDuration = this.forwardTravelDuration + this.returnDuration;
         Tween.stopAllByTarget(this.node);
 
         tween(this.node)
@@ -76,10 +76,10 @@ export class BoomerangProjectile extends AttackBase {
                     if (!this.isAttackActive || !this.attackContext || !this.path) return;
 
                     const elapsed = ratio * totalDuration;
-                    const phase = elapsed <= this.flyDuration ? AttackPhase.Forward : AttackPhase.Return;
+                    const phase = elapsed <= this.forwardTravelDuration ? AttackPhase.Forward : AttackPhase.Return;
                     const t = phase === AttackPhase.Forward
-                        ? elapsed / this.flyDuration
-                        : (elapsed - this.flyDuration) / this.returnDuration;
+                        ? elapsed / this.forwardTravelDuration
+                        : (elapsed - this.forwardTravelDuration) / this.returnDuration;
 
                     const currentWorldPos = this.path.getPosition(phase, t);
                     this.node.setWorldPosition(currentWorldPos);

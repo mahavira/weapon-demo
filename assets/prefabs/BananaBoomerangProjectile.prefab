@@ -239,7 +239,7 @@
     "__prefab": {
       "__id__": 11
     },
-    "flyDuration": 0.75,
+    "forwardTravelDuration": 0.75,
     "returnDuration": 0.65,
     "sideOffset": 220,
     "topOffset": 0,

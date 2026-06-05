@@ -18,7 +18,7 @@ const { ccclass, property } = _decorator;
 @ccclass('LinearProjectile')
 export abstract class LinearProjectile extends AttackBase implements ProjectileDestinationReceiver {
     @property
-    flyDuration: number = 0.32;
+    travelSpeed: number = 4000;
 
     @property
     hitRadius: number = 42;
@@ -66,10 +66,11 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
             this.faceTo(finalDestinationWorldPos);
         }
 
+        const travelDuration = this.buildTravelDuration(context.spawnWorldPos, finalDestinationWorldPos);
         Tween.stopAllByTarget(this.node);
 
         tween(this.node)
-            .to(this.flyDuration, {}, {
+            .to(travelDuration, {}, {
                 onUpdate: (_target, ratio: number) => {
                     if (!this.isAttackActive || !this.attackContext || !this.path) return;
 
@@ -119,6 +120,16 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
     }
 
     protected abstract onFirstHit(target: Node, hitWorldPos: Vec3, phase: AttackPhase): void;
+
+    protected buildTravelDuration(spawnWorldPos: Vec3, destinationWorldPos: Vec3): number {
+        const distance = Vec3.distance(spawnWorldPos, destinationWorldPos);
+        return this.buildDurationFromDistance(distance);
+    }
+
+    protected buildDurationFromDistance(distance: number): number {
+        const safeTravelSpeed = Math.max(1, this.travelSpeed);
+        return Math.max(0.01, distance / safeTravelSpeed);
+    }
 
     private faceTo(destinationWorldPos: Vec3): void {
         const current = this.node.worldPosition;
