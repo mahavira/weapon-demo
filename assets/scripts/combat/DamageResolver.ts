@@ -1,6 +1,8 @@
-import { HitInfo } from './HitInfo';
+import type { HitInfo } from './HitInfo.ts';
 import { EnemyHealth } from '../enemy/base/EnemyHealth';
 import { EnemyVisual } from '../enemy/base/EnemyVisual';
+import { EnemyStatusController } from '../enemy/base/EnemyStatusController';
+import { forwardStatusApplyList } from './StatusApplyForwarding';
 
 export class DamageResolver {
     public static applyDamage(hitInfo: HitInfo) {
@@ -11,5 +13,7 @@ export class DamageResolver {
 
         const enemyVisual = hitInfo.targetNode.getComponentInChildren(EnemyVisual);
         enemyVisual?.playHitFlash();
+
+        forwardStatusApplyList(hitInfo.targetNode, hitInfo.statusApplyList, EnemyStatusController);
     }
 }

@@ -11,6 +11,8 @@ import { spawnRadialExplosionBurst } from '../../effects/ProceduralExplosionEffe
 import { ArcPath } from '../../movement/paths/ArcPath';
 import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 import { AreaImpactRadiusReceiver, ProjectileDestinationReceiver } from '../base/ProjectileAttackContract';
+import { StatusApplyInfo } from '../../combat/StatusApplyInfo';
+import { StatusEffectType } from '../../core/types/StatusEffectType';
 
 const { ccclass, property } = _decorator;
 
@@ -183,6 +185,7 @@ export class ChiliBombProjectile extends AttackBase implements ProjectileDestina
                 hitWorldPos: hitWorldPos.clone(),
                 attackDamage: this.attackContext.attackDamage,
                 phase,
+                statusApplyList: this.buildBurningStatusApplyList(),
             });
 
             DamageResolver.applyDamage(hitInfo);
@@ -200,5 +203,21 @@ export class ChiliBombProjectile extends AttackBase implements ProjectileDestina
 
     private spawnExplosionBurstVisual(hitWorldPos: Vec3): void {
         spawnRadialExplosionBurst(this.node.parent, hitWorldPos, this.impactAoeRadius);
+    }
+
+    private buildBurningStatusApplyList(): StatusApplyInfo[] {
+        if (!this.attackContext) {
+            return [];
+        }
+
+        return [
+            new StatusApplyInfo({
+                effectType: StatusEffectType.Burning,
+                durationSeconds: 3,
+                tickIntervalSeconds: 0.5,
+                tickDamageRatio: 0.3,
+                sourceWeaponId: this.attackContext.attackDamage.sourceWeaponId,
+            }),
+        ];
     }
 }

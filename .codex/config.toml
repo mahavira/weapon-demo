@@ -4,3 +4,6 @@ args = [
     "serve",
     "--mcp",
 ]
+
+[mcp_servers.codegraph.tools.codegraph_context]
+approval_mode = "approve"
