@@ -16,6 +16,7 @@ import { EnemyRegistry } from '../combat/EnemyRegistry';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageResolver } from '../combat/DamageResolver';
 import { HitInfo } from '../combat/HitInfo';
+import { EnemyVisual } from '../enemy/base/EnemyVisual';
 import { sampleBeamHits } from '../combat/BeamHitSampler';
 import { WeaponBeamConfig } from '../config/WeaponConfigTable';
 import { ITargetProvider } from '../core/interfaces/ITargetProvider';
@@ -27,7 +28,7 @@ const { ccclass, property } = _decorator;
 const MAIN_BEAM_LAYER_NAME = 'MainBeamLayer';
 const CORE_BEAM_LAYER_NAME = 'CoreBeamLayer';
 const MUZZLE_CORONA_LAYER_NAME = 'MuzzleCoronaLayer';
-const IMPACT_HOTSPOT_LAYER_NAME = 'ImpactHotspotLayer';
+const STARTUP_FLASH_LAYER_NAME = 'StartupFlashLayer';
 
 @ccclass('SunflowerSpotlightBeam')
 export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeConfigReceiver, BeamTargetProviderReceiver {
@@ -56,12 +57,12 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
     private mainBeamGraphics: Graphics | null = null;
     private coreBeamGraphics: Graphics | null = null;
     private muzzleCoronaGraphics: Graphics | null = null;
-    private impactHotspotGraphics: Graphics | null = null;
+    private startupFlashGraphics: Graphics | null = null;
 
     private mainBeamOpacity: UIOpacity | null = null;
     private coreBeamOpacity: UIOpacity | null = null;
     private muzzleCoronaOpacity: UIOpacity | null = null;
-    private impactHotspotOpacity: UIOpacity | null = null;
+    private startupFlashOpacity: UIOpacity | null = null;
     private lastImpactSparkSpawnSecond: number = -1;
 
     public setBeamConfig(beamConfig: WeaponBeamConfig): void {
@@ -154,12 +155,8 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
             return false;
         }
 
-        if ((!this.currentTargetNode || !this.currentTargetNode.isValid) && this.followTarget) {
-            this.currentTargetNode = this.targetProvider?.getPrimaryTarget() ?? null;
-        }
-
         if (!this.currentTargetNode || !this.currentTargetNode.isValid) {
-            return false;
+            return this.hasLockedBeamPath();
         }
 
         const sourceWorldPos = this.attackContext.spawnWorldPos;
@@ -210,15 +207,22 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
                 continue;
             }
 
+            const hitWorldPos = new Vec3(
+                beamHit.hitWorldPos.x,
+                beamHit.hitWorldPos.y,
+                this.attackContext.spawnWorldPos.z
+            );
+
             const hitInfo = new HitInfo({
                 attackerNode: this.attackContext.attackerNode,
                 targetNode,
-                hitWorldPos: new Vec3(beamHit.hitWorldPos.x, beamHit.hitWorldPos.y, this.attackContext.spawnWorldPos.z),
+                hitWorldPos,
                 attackDamage: this.buildTickDamageInfo(),
                 phase: AttackPhase.Tick,
             });
 
             DamageResolver.applyDamage(hitInfo);
+            targetNode.getComponentInChildren(EnemyVisual)?.playBeamScorch(this.beamWidth);
         }
 
         this.spawnImpactSparkShards();
@@ -243,6 +247,8 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         const beamLength = Math.max(1, Math.sqrt(dx * dx + dy * dy));
         const beamAngle = Math.atan2(dy, dx) * 180 / Math.PI;
         const pulseRatio = 0.75 + Math.sin(this.elapsedSeconds * 18) * 0.18;
+        const startupRatio = this.buildStartupRatio();
+        const startupBeamScale = 0.35 + startupRatio * 0.65;
 
         this.drawBeamLayer(
             this.node.getChildByName(MAIN_BEAM_LAYER_NAME),
@@ -251,7 +257,7 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
             sourceWorldPos,
             beamLength,
             beamAngle,
-            Math.max(8, this.beamWidth * 1.05 * pulseRatio),
+            Math.max(8, this.beamWidth * 1.05 * pulseRatio * startupBeamScale),
             new Color(255, 210, 70, 220)
         );
         this.drawBeamLayer(
@@ -261,12 +267,12 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
             sourceWorldPos,
             beamLength,
             beamAngle,
-            Math.max(4, this.beamWidth * 0.42 * (pulseRatio + 0.08)),
+            Math.max(4, this.beamWidth * 0.42 * (pulseRatio + 0.08) * (0.2 + startupRatio * 0.8)),
             new Color(255, 248, 220, 255)
         );
 
-        this.drawMuzzleCorona(sourceWorldPos, pulseRatio);
-        this.drawImpactHotspot(this.beamImpactWorldPos, pulseRatio);
+        this.drawMuzzleCorona(sourceWorldPos, pulseRatio, startupRatio);
+        this.drawStartupFlash(sourceWorldPos, beamAngle, startupRatio);
     }
 
     private drawBeamLayer(
@@ -301,7 +307,7 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         }
     }
 
-    private drawMuzzleCorona(sourceWorldPos: Vec3, pulseRatio: number): void {
+    private drawMuzzleCorona(sourceWorldPos: Vec3, pulseRatio: number, startupRatio: number): void {
         const muzzleCoronaNode = this.node.getChildByName(MUZZLE_CORONA_LAYER_NAME);
         if (!muzzleCoronaNode || !this.muzzleCoronaGraphics) {
             return;
@@ -309,7 +315,8 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
 
         muzzleCoronaNode.setWorldPosition(sourceWorldPos);
         const transform = muzzleCoronaNode.getComponent(UITransform) ?? muzzleCoronaNode.addComponent(UITransform);
-        const coronaRadius = Math.max(18, this.beamWidth * 0.55 * pulseRatio);
+        const startupFlareScale = 0.65 + startupRatio * 0.7;
+        const coronaRadius = Math.max(18, this.beamWidth * 0.55 * pulseRatio * startupFlareScale);
         transform.setContentSize(coronaRadius * 4, coronaRadius * 4);
 
         const graphics = this.muzzleCoronaGraphics;
@@ -342,41 +349,7 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         graphics.fill();
 
         if (this.muzzleCoronaOpacity) {
-            this.muzzleCoronaOpacity.opacity = 210;
-        }
-    }
-
-    private drawImpactHotspot(impactWorldPos: Vec3, pulseRatio: number): void {
-        const impactHotspotNode = this.node.getChildByName(IMPACT_HOTSPOT_LAYER_NAME);
-        if (!impactHotspotNode || !this.impactHotspotGraphics) {
-            return;
-        }
-
-        impactHotspotNode.setWorldPosition(impactWorldPos);
-        const transform = impactHotspotNode.getComponent(UITransform) ?? impactHotspotNode.addComponent(UITransform);
-        const hotspotRadius = Math.max(16, this.beamWidth * 0.38 * pulseRatio);
-        transform.setContentSize(hotspotRadius * 4, hotspotRadius * 4);
-
-        const graphics = this.impactHotspotGraphics;
-        graphics.clear();
-        graphics.fillColor = new Color(255, 248, 228, 220);
-        graphics.circle(0, 0, hotspotRadius * 0.42);
-        graphics.fill();
-
-        graphics.fillColor = new Color(255, 172, 70, 135);
-        graphics.circle(0, 0, hotspotRadius * 0.9);
-        graphics.fill();
-
-        this.drawImpactFlare(graphics, hotspotRadius, pulseRatio);
-        this.drawImpactSparkBurst(graphics, hotspotRadius);
-
-        graphics.strokeColor = new Color(255, 112, 42, 220);
-        graphics.lineWidth = Math.max(2, this.beamWidth * 0.05);
-        graphics.circle(0, 0, hotspotRadius * 1.22);
-        graphics.stroke();
-
-        if (this.impactHotspotOpacity) {
-            this.impactHotspotOpacity.opacity = 220;
+            this.muzzleCoronaOpacity.opacity = Math.min(255, 190 + startupRatio * 55);
         }
     }
 
@@ -384,17 +357,17 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         const mainBeamNode = this.findOrCreateLayerNode(MAIN_BEAM_LAYER_NAME);
         const coreBeamNode = this.findOrCreateLayerNode(CORE_BEAM_LAYER_NAME);
         const muzzleCoronaNode = this.findOrCreateLayerNode(MUZZLE_CORONA_LAYER_NAME);
-        const impactHotspotNode = this.findOrCreateLayerNode(IMPACT_HOTSPOT_LAYER_NAME);
+        const startupFlashNode = this.findOrCreateLayerNode(STARTUP_FLASH_LAYER_NAME);
 
         this.mainBeamGraphics = this.ensureGraphics(mainBeamNode);
         this.coreBeamGraphics = this.ensureGraphics(coreBeamNode);
         this.muzzleCoronaGraphics = this.ensureGraphics(muzzleCoronaNode);
-        this.impactHotspotGraphics = this.ensureGraphics(impactHotspotNode);
+        this.startupFlashGraphics = this.ensureGraphics(startupFlashNode);
 
         this.mainBeamOpacity = this.ensureOpacity(mainBeamNode, 220);
         this.coreBeamOpacity = this.ensureOpacity(coreBeamNode, 255);
         this.muzzleCoronaOpacity = this.ensureOpacity(muzzleCoronaNode, 210);
-        this.impactHotspotOpacity = this.ensureOpacity(impactHotspotNode, 220);
+        this.startupFlashOpacity = this.ensureOpacity(startupFlashNode, 0);
     }
 
     private findOrCreateLayerNode(layerName: string): Node {
@@ -526,11 +499,36 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         graphics.fill();
     }
 
-    private drawImpactFlare(graphics: Graphics, hotspotRadius: number, pulseRatio: number): void {
-        const flareLength = hotspotRadius * (2.1 + pulseRatio * 0.35);
-        const flareWidth = hotspotRadius * 0.22;
+    private drawStartupFlash(sourceWorldPos: Vec3, beamAngle: number, startupRatio: number): void {
+        const startupFlashNode = this.node.getChildByName(STARTUP_FLASH_LAYER_NAME);
+        if (!startupFlashNode || !this.startupFlashGraphics || !this.startupFlashOpacity) {
+            return;
+        }
 
-        graphics.fillColor = new Color(255, 243, 210, 165);
+        const startupFlashWindow = 0.08;
+        const flashProgress = Math.min(1, this.elapsedSeconds / startupFlashWindow);
+        const flashIntensity = Math.max(0, 1 - flashProgress);
+
+        startupFlashNode.setWorldPosition(sourceWorldPos);
+        startupFlashNode.angle = beamAngle;
+
+        const transform = startupFlashNode.getComponent(UITransform) ?? startupFlashNode.addComponent(UITransform);
+        const flashLength = Math.max(72, this.beamWidth * (2.4 + startupRatio * 1.8));
+        const flashWidth = Math.max(20, this.beamWidth * (1.2 + startupRatio * 0.7));
+        transform.setContentSize(flashLength * 2, flashWidth * 2.5);
+
+        const graphics = this.startupFlashGraphics;
+        graphics.clear();
+
+        if (flashIntensity <= 0.001) {
+            this.startupFlashOpacity.opacity = 0;
+            return;
+        }
+
+        const flareLength = flashLength * (0.65 + flashIntensity * 0.6);
+        const flareWidth = flashWidth * (0.5 + flashIntensity * 0.35);
+
+        graphics.fillColor = new Color(255, 252, 236, 220);
         graphics.moveTo(-flareLength, 0);
         graphics.lineTo(0, flareWidth);
         graphics.lineTo(flareLength, 0);
@@ -538,36 +536,26 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
         graphics.close();
         graphics.fill();
 
-        graphics.moveTo(0, -flareLength * 0.6);
-        graphics.lineTo(flareWidth * 0.72, 0);
-        graphics.lineTo(0, flareLength * 0.6);
-        graphics.lineTo(-flareWidth * 0.72, 0);
+        graphics.fillColor = new Color(255, 204, 88, 160);
+        graphics.moveTo(0, -flareLength * 0.55);
+        graphics.lineTo(flareWidth * 0.65, 0);
+        graphics.lineTo(0, flareLength * 0.55);
+        graphics.lineTo(-flareWidth * 0.65, 0);
         graphics.close();
         graphics.fill();
+
+        this.startupFlashOpacity.opacity = Math.floor(255 * flashIntensity);
     }
 
-    private drawImpactSparkBurst(graphics: Graphics, hotspotRadius: number): void {
-        const sparkCount = 7;
-        const sparkPhase = this.elapsedSeconds * 12;
+    private buildStartupRatio(): number {
+        const startupDuration = 0.08;
+        return Math.min(1, this.elapsedSeconds / startupDuration);
+    }
 
-        graphics.strokeColor = new Color(255, 170, 70, 190);
-        graphics.lineWidth = Math.max(1.2, this.beamWidth * 0.04);
-
-        for (let index = 0; index < sparkCount; index++) {
-            const radians = index / sparkCount * Math.PI * 2 + sparkPhase * 0.08;
-            const startRadius = hotspotRadius * 0.7;
-            const endRadius = hotspotRadius * (1.2 + (index % 2) * 0.28);
-
-            graphics.moveTo(
-                Math.cos(radians) * startRadius,
-                Math.sin(radians) * startRadius
-            );
-            graphics.lineTo(
-                Math.cos(radians) * endRadius,
-                Math.sin(radians) * endRadius
-            );
-            graphics.stroke();
-        }
+    private hasLockedBeamPath(): boolean {
+        return this.beamEndWorldPos.x !== 0
+            || this.beamEndWorldPos.y !== 0
+            || this.beamEndWorldPos.z !== 0;
     }
 
     private drawBeamWavePath(graphics: Graphics, beamLength: number, lineWidth: number, strokeColor: Color): void {
@@ -714,7 +702,7 @@ export class SunflowerSpotlightBeam extends AttackBase implements BeamRuntimeCon
             this.mainBeamGraphics,
             this.coreBeamGraphics,
             this.muzzleCoronaGraphics,
-            this.impactHotspotGraphics,
+            this.startupFlashGraphics,
         ]) {
             graphics?.clear();
         }

@@ -31,10 +31,16 @@ export class EnemyVisual extends Component {
     private burningPulseTime = 0;
     private burningFlameNode: Node | null = null;
     private burningSmokeNode: Node | null = null;
+    private beamScorchNode: Node | null = null;
     private burningFlameGraphics: Graphics | null = null;
+    private beamScorchGraphics: Graphics | null = null;
     private isBurningSmokeScheduled = false;
     private readonly hitFlashState = { mix: 0 };
     private readonly burningSmokeSpawnTask = () => this.spawnSmokePuff();
+    private readonly beamScorchState = {
+        innerRadius: 0,
+        outerRadius: 0,
+    };
 
     protected onLoad(): void {
         this.sprite = this.getComponent(Sprite);
@@ -116,12 +122,49 @@ export class EnemyVisual extends Component {
     }
 
     public playDeath(): void {
+        this.clearBeamScorch();
         // TODO: add death animation.
+    }
+
+    public playBeamScorch(beamWidth: number): void {
+        this.ensureBeamScorchNode();
+        if (!this.beamScorchNode || !this.beamScorchGraphics) {
+            return;
+        }
+
+        const scorchRadius = Math.max(10, beamWidth * 0.22);
+        const transform = this.beamScorchNode.getComponent(UITransform) ?? this.beamScorchNode.addComponent(UITransform);
+        transform.setContentSize(scorchRadius * 4, scorchRadius * 4);
+        this.beamScorchNode.setPosition(0, scorchRadius * 0.9, 0);
+
+        this.beamScorchState.innerRadius = scorchRadius * 0.45;
+        this.beamScorchState.outerRadius = scorchRadius;
+        this.redrawBeamScorchLayer();
+
+        const opacity = this.beamScorchNode.getComponent(UIOpacity) ?? this.beamScorchNode.addComponent(UIOpacity);
+        Tween.stopAllByTarget(opacity);
+        Tween.stopAllByTarget(this.beamScorchState);
+        opacity.opacity = 180;
+
+        tween(this.beamScorchState)
+            .to(0.18, {
+                innerRadius: scorchRadius * 0.18,
+                outerRadius: scorchRadius * 1.45,
+            }, {
+                onUpdate: () => this.redrawBeamScorchLayer(),
+            })
+            .start();
+
+        tween(opacity)
+            .to(0.18, { opacity: 0 })
+            .call(() => this.clearBeamScorch())
+            .start();
     }
 
     protected onDestroy(): void {
         Tween.stopAllByTarget(this.node);
         Tween.stopAllByTarget(this.hitFlashState);
+        Tween.stopAllByTarget(this.beamScorchState);
         this.unschedule(this.burningSmokeSpawnTask);
         this.isBurningSmokeScheduled = false;
     }
@@ -165,6 +208,43 @@ export class EnemyVisual extends Component {
                 smokeOpacity.opacity = 255;
             }
         }
+    }
+
+    private ensureBeamScorchNode(): void {
+        if (!this.beamScorchNode || !this.beamScorchNode.isValid) {
+            this.beamScorchNode = new Node('BeamScorchStatusLayer');
+            const scorchTransform = this.beamScorchNode.addComponent(UITransform);
+            scorchTransform.setContentSize(64, 64);
+            this.beamScorchGraphics = this.beamScorchNode.addComponent(Graphics);
+            this.beamScorchNode.addComponent(UIOpacity).opacity = 0;
+            this.node.addChild(this.beamScorchNode);
+            return;
+        }
+
+        const scorchOpacity = this.beamScorchNode.getComponent(UIOpacity) ?? this.beamScorchNode.addComponent(UIOpacity);
+        Tween.stopAllByTarget(scorchOpacity);
+        scorchOpacity.opacity = 180;
+    }
+
+    private redrawBeamScorchLayer(): void {
+        if (!this.beamScorchGraphics) {
+            return;
+        }
+
+        const scorchGraphics = this.beamScorchGraphics;
+        scorchGraphics.clear();
+        scorchGraphics.fillColor = new Color(255, 246, 214, 160);
+        scorchGraphics.circle(0, 0, this.beamScorchState.innerRadius);
+        scorchGraphics.fill();
+
+        scorchGraphics.fillColor = new Color(255, 156, 62, 110);
+        scorchGraphics.circle(0, 0, this.beamScorchState.outerRadius);
+        scorchGraphics.fill();
+
+        scorchGraphics.strokeColor = new Color(255, 106, 36, 180);
+        scorchGraphics.lineWidth = 1.5;
+        scorchGraphics.circle(0, 0, this.beamScorchState.outerRadius * 1.16);
+        scorchGraphics.stroke();
     }
 
     private redrawBurningFlameLayer(): void {
@@ -260,6 +340,19 @@ export class EnemyVisual extends Component {
                 }
             })
             .start();
+    }
+
+    private clearBeamScorch(): void {
+        if (!this.beamScorchNode || !this.beamScorchNode.isValid) {
+            this.beamScorchNode = null;
+            this.beamScorchGraphics = null;
+            return;
+        }
+
+        this.beamScorchGraphics?.clear();
+        this.beamScorchNode.destroy();
+        this.beamScorchNode = null;
+        this.beamScorchGraphics = null;
     }
 
     private mixColor(from: Color, to: Color, ratio: number): Color {
