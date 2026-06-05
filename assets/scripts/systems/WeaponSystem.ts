@@ -4,7 +4,7 @@ import { PrefabRegistry } from '../registry/PrefabRegistry';
 import { NearestTargetProvider } from '../targeting/NearestTargetProvider';
 import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
-import { isBeamRuntimeConfigReceiver, isBeamTargetProviderReceiver } from '../attacks/BeamAttackContract';
+import { isBeamRuntimeConfigReceiver } from '../attacks/BeamAttackContract';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
@@ -192,14 +192,13 @@ export class WeaponSystem extends Component {
         }
 
         const { node, attack } = spawnedAttack;
-        if (!isBeamRuntimeConfigReceiver(attack) || !isBeamTargetProviderReceiver(attack)) {
+        if (!isBeamRuntimeConfigReceiver(attack)) {
             console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support beam runtime config`);
             node.destroy();
             return false;
         }
 
         attack.setBeamConfig(config.beam ?? {});
-        attack.setBeamTargetProvider(this.targetProvider);
 
         const context = this.buildAttackContext(
             config,

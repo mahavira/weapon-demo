@@ -467,8 +467,8 @@
     "durationSeconds": 3,
     "tickIntervalSeconds": 0.25,
     "beamWidth": 18,
+    "beamWidthMultiplier": 1,
     "beamRange": 1020,
-    "followTarget": true,
     "_id": ""
   },
   {

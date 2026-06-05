@@ -240,7 +240,7 @@
       "__id__": 11
     },
     "travelSpeed": 1280,
-    "hitRadius": 5,
+    "hitRadius": 42,
     "rotateSpeed": 0,
     "autoFaceDirection": true,
     "destroyWhenExitVisibleArea": true,

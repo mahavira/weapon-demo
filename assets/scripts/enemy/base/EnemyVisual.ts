@@ -135,7 +135,7 @@ export class EnemyVisual extends Component {
         const scorchRadius = Math.max(10, beamWidth * 0.22);
         const transform = this.beamScorchNode.getComponent(UITransform) ?? this.beamScorchNode.addComponent(UITransform);
         transform.setContentSize(scorchRadius * 4, scorchRadius * 4);
-        this.beamScorchNode.setPosition(0, scorchRadius * 0.9, 0);
+        this.beamScorchNode.setPosition(this.getBeamScorchLocalPos(scorchRadius));
 
         this.beamScorchState.innerRadius = scorchRadius * 0.45;
         this.beamScorchState.outerRadius = scorchRadius;
@@ -247,6 +247,11 @@ export class EnemyVisual extends Component {
         scorchGraphics.stroke();
     }
 
+    private getBeamScorchLocalPos(scorchRadius: number): Vec3 {
+        const visualHeight = this.getPrimaryVisualHeight();
+        return new Vec3(0, Math.max(scorchRadius * 0.9, visualHeight * 0.18), 0);
+    }
+
     private redrawBurningFlameLayer(): void {
         if (!this.burningFlameGraphics) {
             return;
@@ -353,6 +358,26 @@ export class EnemyVisual extends Component {
         this.beamScorchNode.destroy();
         this.beamScorchNode = null;
         this.beamScorchGraphics = null;
+    }
+
+    private getPrimaryVisualHeight(): number {
+        const ownTransform = this.getComponent(UITransform);
+        if (ownTransform && ownTransform.contentSize.height > 0) {
+            return ownTransform.contentSize.height;
+        }
+
+        const spriteTransform = this.sprite?.getComponent(UITransform);
+        if (spriteTransform && spriteTransform.contentSize.height > 0) {
+            return spriteTransform.contentSize.height;
+        }
+
+        const firstChild = this.node.children[0];
+        const childTransform = firstChild?.getComponent(UITransform);
+        if (childTransform && childTransform.contentSize.height > 0) {
+            return childTransform.contentSize.height;
+        }
+
+        return 64;
     }
 
     private mixColor(from: Color, to: Color, ratio: number): Color {

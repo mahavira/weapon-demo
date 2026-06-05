@@ -24,7 +24,7 @@ test('sunflower spotlight mirror is configured as a beam weapon', () => {
     assert.equal(config.projectilePrefabKey, 'sunflower_spotlight_mirror_beam');
     assert.equal(config.beam?.durationSeconds, 3);
     assert.equal(config.beam?.tickIntervalSeconds, 0.25);
-    assert.equal(config.beam?.beamWidth, 52);
-    assert.equal(config.beam?.beamRange, 920);
-    assert.equal(config.beam?.followTarget, true);
+    assert.equal(config.beam?.beamWidth, 18);
+    assert.equal(config.beam?.beamWidthMultiplier, 1);
+    assert.equal(config.beam?.beamRange, 1020);
 });

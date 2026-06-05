@@ -127,8 +127,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 50,
-      "height": 33
+      "width": 100,
+      "height": 66
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -242,9 +242,9 @@
     "forwardTravelDuration": 0.75,
     "returnDuration": 0.65,
     "sideOffset": 220,
-    "topOffset": 0,
-    "hitRadius": 25,
-    "rotateSpeed": 36,
+    "topOffset": 100,
+    "hitRadius": 60,
+    "rotateSpeed": 18,
     "returnDamageScale": 1,
     "destroyWhenExitVisibleArea": true,
     "_id": ""

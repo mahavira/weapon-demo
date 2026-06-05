@@ -33,7 +33,7 @@ export class BoomerangProjectile extends AttackBase {
     hitRadius: number = 60;
 
     @property
-    rotateSpeed: number = 36;
+    rotateSpeed: number = 18;
 
     @property
     returnDamageScale: number = 1;

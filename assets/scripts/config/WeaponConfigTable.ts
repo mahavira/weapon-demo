@@ -30,8 +30,8 @@ export interface WeaponBeamConfig {
     durationSeconds?: number;
     tickIntervalSeconds?: number;
     beamWidth?: number;
+    beamWidthMultiplier?: number;
     beamRange?: number;
-    followTarget?: boolean;
 }
 
 export interface WeaponConfigData {
@@ -137,8 +137,8 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             durationSeconds: 3,
             tickIntervalSeconds: 0.25,
             beamWidth: 18,
+            beamWidthMultiplier: 1,
             beamRange: 1020,
-            followTarget: true,
         },
     },
 };
