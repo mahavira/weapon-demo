@@ -14,6 +14,10 @@ type EndpointAttack = AttackBase & {
     setEndWorldPos(endWorldPos: Vec3): void;
 };
 
+type AreaImpactAttack = AttackBase & {
+    setImpactAoeRadius(radius: number): void;
+};
+
 /**
  * One unified weapon entry point.
  *
@@ -178,7 +182,9 @@ export class WeaponSystem extends Component {
 
                 const startWorldPos = this.weaponPoint.worldPosition.clone();
                 startWorldPos.x += offsetIndex * bulletSpacingX;
-                const endWorldPos = this.getBulletEndWorldPos(startWorldPos, aimWorldPos, bulletTravelDistance);
+                const endWorldPos = config.projectileEndAtTarget
+                    ? aimWorldPos.clone()
+                    : this.getBulletEndWorldPos(startWorldPos, aimWorldPos, bulletTravelDistance);
 
                 this.spawnBullet(config, startWorldPos, endWorldPos, target);
             }, delay);
@@ -195,6 +201,7 @@ export class WeaponSystem extends Component {
 
         const node = instantiate(prefab);
         this.projectileRoot.addChild(node);
+        this.applyProjectileVisualOverrides(node, config);
 
         const attack = this.getAttackComponent(node, config.projectilePrefabKey);
         if (!attack) {
@@ -209,6 +216,10 @@ export class WeaponSystem extends Component {
         }
 
         attack.setEndWorldPos(endWorldPos);
+
+        if (this.canSetImpactAoeRadius(attack)) {
+            attack.setImpactAoeRadius(config.impactAoeRadius ?? 0);
+        }
 
         const context = new AttackContext({
             attacker: this.owner ?? this.node,
@@ -283,6 +294,10 @@ export class WeaponSystem extends Component {
         return typeof (attack as { setEndWorldPos?: unknown }).setEndWorldPos === 'function';
     }
 
+    private canSetImpactAoeRadius(attack: AttackBase): attack is AreaImpactAttack {
+        return typeof (attack as { setImpactAoeRadius?: unknown }).setImpactAoeRadius === 'function';
+    }
+
     private isAttackBase(component: Component): component is AttackBase {
         const candidate = component as {
             startAttack?: unknown;
@@ -291,5 +306,11 @@ export class WeaponSystem extends Component {
 
         return typeof candidate.startAttack === 'function'
             && typeof candidate.stopAttack === 'function';
+    }
+
+    private applyProjectileVisualOverrides(node: Node, config: WeaponConfigData): void {
+        if (config.projectileScale !== undefined) {
+            node.setScale(config.projectileScale, config.projectileScale, 1);
+        }
     }
 }

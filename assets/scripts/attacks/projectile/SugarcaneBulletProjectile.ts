@@ -3,5 +3,5 @@ import { DirectHitProjectile } from './DirectHitProjectile';
 
 const { ccclass } = _decorator;
 
-@ccclass('StrawberryBulletProjectile')
-export class StrawberryBulletProjectile extends DirectHitProjectile {}
+@ccclass('SugarcaneBulletProjectile')
+export class SugarcaneBulletProjectile extends DirectHitProjectile {}

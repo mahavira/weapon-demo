@@ -243,9 +243,10 @@
     "returnDuration": 0.65,
     "sideOffset": 220,
     "topOffset": 0,
-    "hitRadius": 60,
+    "hitRadius": 25,
     "rotateSpeed": 36,
     "returnDamageScale": 1,
+    "destroyWhenExitVisibleArea": true,
     "_id": ""
   },
   {

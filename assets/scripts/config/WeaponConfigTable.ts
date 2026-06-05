@@ -21,6 +21,11 @@ export interface WeaponConfigData {
     bulletTargetSpreadX?: number;
     bulletTravelDistance?: number;
     shotDelay?: number;
+    projectileEndAtTarget?: boolean;
+
+    /** Optional on-hit area damage for linear projectiles. */
+    impactAoeRadius?: number;
+    projectileScale?: number;
 }
 
 /**
@@ -51,6 +56,23 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         bulletTargetSpreadX: 132,
         bulletTravelDistance: 1280,
         shotDelay: 0.00,
+    },
+
+    chili_bomb: {
+        id: 'chili_bomb',
+        name: '辣椒炸弹',
+        attackType: WeaponAttackType.MultiBullet,
+        projectilePrefabKey: 'chili_bomb_projectile',
+        damage: 16,
+        cooldown: 0.9,
+        bulletCount: 1,
+        bulletSpacingX: 0,
+        bulletTargetSpreadX: 0,
+        bulletTravelDistance: 960,
+        shotDelay: 0.00,
+        projectileEndAtTarget: true,
+        impactAoeRadius: 80,
+        projectileScale: 1,
     },
 
     sugarcane_machine_gun: {

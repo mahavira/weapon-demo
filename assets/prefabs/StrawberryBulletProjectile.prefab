@@ -240,9 +240,10 @@
       "__id__": 11
     },
     "flyDuration": 10,
-    "hitRadius": 42,
+    "hitRadius": 5,
     "rotateSpeed": 0,
     "autoFaceDirection": true,
+    "destroyWhenExitVisibleArea": true,
     "_id": ""
   },
   {

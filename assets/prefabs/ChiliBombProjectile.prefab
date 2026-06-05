@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.Prefab",
-    "_name": "SugarcaneBulletProjectile",
+    "_name": "ChiliBombProjectile",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "SugarcaneBulletProjectile",
+    "_name": "ChiliBombProjectile",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": null,
@@ -127,8 +127,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 23,
-      "height": 10
+      "width": 100,
+      "height": 100
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -164,7 +164,7 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "b6cb0980-b111-44f7-a321-a872c6e98528@f9941",
+      "__uuid__": "ce762855-a59d-4931-83de-2f4d1340fec9@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
@@ -228,7 +228,7 @@
     "fileId": "f3yweLMhFGjbNZOMEm5x0d"
   },
   {
-    "__type__": "7c1f64NS69PNZ4tDIyfEqs0",
+    "__type__": "0f3d9W2antNHKHHV6T35qmy",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -239,16 +239,16 @@
     "__prefab": {
       "__id__": 11
     },
-    "flyDuration": 0.32,
-    "hitRadius": 10,
-    "rotateSpeed": 0,
+    "flyDuration": 1.5,
+    "arcHeight": 280,
+    "rotateSpeed": 18,
     "autoFaceDirection": true,
     "destroyWhenExitVisibleArea": true,
     "_id": ""
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "ddDpaIxTJNmaEoXsCYiCvo"
+    "fileId": "60fRx5Y2lGLbI9nH6WqMxQ"
   },
   {
     "__type__": "cc.PrefabInfo",
