@@ -60,7 +60,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         attackType: WeaponAttackType.Boomerang,
         projectilePrefabKey: 'banana_boomerang_projectile',
         damage: 10,
-        cooldown: 1.2,
+        cooldown: 0.2,
         boomerang: {
             returnDamageScale: 1,
             forwardDistance: 360,
@@ -73,7 +73,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         attackType: WeaponAttackType.Projectile,
         projectilePrefabKey: 'strawberry_bullet_projectile',
         damage: 2,
-        cooldown: 0.35,
+        cooldown: 0.2,
         volley: {
             count: 3,
             spacingX: 0,
@@ -91,7 +91,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         attackType: WeaponAttackType.Projectile,
         projectilePrefabKey: 'chili_bomb_projectile',
         damage: 16,
-        cooldown: 0.9,
+        cooldown: 0.2,
         volley: {
             count: 1,
             spacingX: 0,
@@ -114,7 +114,7 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         attackType: WeaponAttackType.Projectile,
         projectilePrefabKey: 'sugarcane_bullet_projectile',
         damage: 3,
-        cooldown: 1,
+        cooldown: 0.2,
         volley: {
             count: 3,
             spacingX: 0,
@@ -132,9 +132,9 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         attackType: WeaponAttackType.Beam,
         projectilePrefabKey: 'sunflower_spotlight_mirror_beam',
         damage: 48,
-        cooldown: 4,
+        cooldown: 2,
         beam: {
-            durationSeconds: 3,
+            durationSeconds: 2,
             tickIntervalSeconds: 0.25,
             beamWidth: 18,
             beamWidthMultiplier: 1,
