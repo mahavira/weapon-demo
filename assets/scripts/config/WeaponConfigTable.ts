@@ -3,6 +3,28 @@ export enum WeaponAttackType {
     MultiBullet = 'multi_bullet',
 }
 
+export interface WeaponBoomerangConfig {
+    returnDamageScale?: number;
+    forwardDistance?: number;
+}
+
+export interface WeaponProjectileVolleyConfig {
+    count?: number;
+    spacingX?: number;
+    targetSpreadX?: number;
+    shotDelay?: number;
+}
+
+export interface WeaponProjectileFlightConfig {
+    travelDistance?: number;
+    endAtTarget?: boolean;
+    visualScale?: number;
+}
+
+export interface WeaponProjectileImpactConfig {
+    aoeRadius?: number;
+}
+
 export interface WeaponConfigData {
     id: string;
     name: string;
@@ -11,21 +33,10 @@ export interface WeaponConfigData {
     damage: number;
     cooldown?: number;
 
-    /** Boomerang only. Return damage = damage * returnDamageScale. */
-    returnDamageScale?: number;
-    boomerangForwardDistance?: number;
-
-    /** Multi-bullet only. */
-    bulletCount?: number;
-    bulletSpacingX?: number;
-    bulletTargetSpreadX?: number;
-    bulletTravelDistance?: number;
-    shotDelay?: number;
-    projectileEndAtTarget?: boolean;
-
-    /** Optional on-hit area damage for linear projectiles. */
-    impactAoeRadius?: number;
-    projectileScale?: number;
+    boomerang?: WeaponBoomerangConfig;
+    volley?: WeaponProjectileVolleyConfig;
+    flight?: WeaponProjectileFlightConfig;
+    impact?: WeaponProjectileImpactConfig;
 }
 
 /**
@@ -40,8 +51,10 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         projectilePrefabKey: 'banana_boomerang_projectile',
         damage: 10,
         cooldown: 1.2,
-        returnDamageScale: 1,
-        boomerangForwardDistance: 360,
+        boomerang: {
+            returnDamageScale: 1,
+            forwardDistance: 360,
+        },
     },
 
     strawberry_gun: {
@@ -51,11 +64,15 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         projectilePrefabKey: 'strawberry_bullet_projectile',
         damage: 2,
         cooldown: 0.35,
-        bulletCount: 3,
-        bulletSpacingX: 0,
-        bulletTargetSpreadX: 132,
-        bulletTravelDistance: 1280,
-        shotDelay: 0.00,
+        volley: {
+            count: 3,
+            spacingX: 0,
+            targetSpreadX: 132,
+            shotDelay: 0.00,
+        },
+        flight: {
+            travelDistance: 1280,
+        },
     },
 
     chili_bomb: {
@@ -65,14 +82,20 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         projectilePrefabKey: 'chili_bomb_projectile',
         damage: 16,
         cooldown: 0.9,
-        bulletCount: 1,
-        bulletSpacingX: 0,
-        bulletTargetSpreadX: 0,
-        bulletTravelDistance: 960,
-        shotDelay: 0.00,
-        projectileEndAtTarget: true,
-        impactAoeRadius: 80,
-        projectileScale: 1,
+        volley: {
+            count: 1,
+            spacingX: 0,
+            targetSpreadX: 0,
+            shotDelay: 0.00,
+        },
+        flight: {
+            travelDistance: 960,
+            endAtTarget: true,
+            visualScale: 1,
+        },
+        impact: {
+            aoeRadius: 80,
+        },
     },
 
     sugarcane_machine_gun: {
@@ -82,10 +105,14 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         projectilePrefabKey: 'sugarcane_bullet_projectile',
         damage: 3,
         cooldown: 1,
-        bulletCount: 3,
-        bulletSpacingX: 0,
-        bulletTargetSpreadX: 0,
-        bulletTravelDistance: 1280,
-        shotDelay: 0.08,
+        volley: {
+            count: 3,
+            spacingX: 0,
+            targetSpreadX: 0,
+            shotDelay: 0.08,
+        },
+        flight: {
+            travelDistance: 1280,
+        },
     },
 };

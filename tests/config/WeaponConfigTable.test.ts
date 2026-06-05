@@ -7,9 +7,9 @@ test('chili bomb is configured as a single exploding projectile', () => {
 
     assert.ok(config);
     assert.equal(config.attackType, WeaponAttackType.MultiBullet);
-    assert.equal(config.bulletCount, 1);
+    assert.equal(config.volley?.count, 1);
     assert.equal(config.damage, 16);
-    assert.equal(config.impactAoeRadius, 80);
+    assert.equal(config.impact?.aoeRadius, 80);
     assert.equal(config.projectilePrefabKey, 'chili_bomb_projectile');
-    assert.equal(config.projectileEndAtTarget, true);
+    assert.equal(config.flight?.endAtTarget, true);
 });

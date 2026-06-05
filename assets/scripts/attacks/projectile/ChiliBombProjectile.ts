@@ -1,4 +1,4 @@
-import { _decorator, Color, Graphics, Node, Tween, UIOpacity, UITransform, Vec3, tween, view } from 'cc';
+import { _decorator, Node, Tween, UITransform, Vec3, tween, view } from 'cc';
 import { AttackBase } from '../base/AttackBase';
 import { AttackContext } from '../base/AttackContext';
 import { AttackPhase } from '../../core/types/AttackTypes';
@@ -7,8 +7,9 @@ import { HitInfo } from '../../combat/HitInfo';
 import { DamageResolver } from '../../combat/DamageResolver';
 import { DamageChannel } from '../../core/types/DamageChannel';
 import { MathUtils } from '../../core/utils/MathUtils';
+import { spawnRadialExplosionBurst } from '../../effects/ProceduralExplosionEffect';
 import { ArcPath } from '../../movement/paths/ArcPath';
-import { isRectFullyOutsideVisibleArea } from './ProjectileViewportCulling';
+import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 
 const { ccclass, property } = _decorator;
 
@@ -74,7 +75,7 @@ export class ChiliBombProjectile extends AttackBase {
                         this.node.angle -= this.rotateSpeed;
                     }
 
-                    if (this.shouldDestroyForVisibleArea()) {
+                    if (this.shouldCullOutsideVisibleArea()) {
                         this.stopAttack();
                         return;
                     }
@@ -88,7 +89,7 @@ export class ChiliBombProjectile extends AttackBase {
                     return;
                 }
 
-                this.applyAreaDamage(this.endWorldPos, AttackPhase.Impact);
+                this.applyExplosionAtWorldPos(this.endWorldPos, AttackPhase.Impact);
                 this.stopAttack();
             })
             .start();
@@ -97,15 +98,12 @@ export class ChiliBombProjectile extends AttackBase {
     public stopAttack(): void {
         if (!this.node || !this.node.isValid) return;
 
-        this.isAlive = false;
-        Tween.stopAllByTarget(this.node);
-        this.resetState();
+        this.cleanupRuntimeState();
         this.node.destroy();
     }
 
     protected onDestroy(): void {
-        Tween.stopAllByTarget(this.node);
-        this.resetState();
+        this.cleanupRuntimeState();
     }
 
     private faceAlongTravel(previousWorldPos: Vec3, currentWorldPos: Vec3): void {
@@ -119,7 +117,8 @@ export class ChiliBombProjectile extends AttackBase {
         this.node.angle = Math.atan2(dy, dx) * 180 / Math.PI;
     }
 
-    private resetState(): void {
+    private cleanupRuntimeState(): void {
+        Tween.stopAllByTarget(this.node);
         this.impactAoeRadius = 0;
         this.endWorldPos = null;
         this.path = null;
@@ -128,10 +127,15 @@ export class ChiliBombProjectile extends AttackBase {
         this.isAlive = false;
     }
 
-    private applyAreaDamage(hitWorldPos: Vec3, phase: AttackPhase): void {
+    private applyExplosionAtWorldPos(hitWorldPos: Vec3, phase: AttackPhase): void {
         if (!this.context) return;
 
-        this.spawnImpactBurst(hitWorldPos);
+        this.spawnExplosionBurstVisual(hitWorldPos);
+        this.applyExplosionDamageAtWorldPos(hitWorldPos, phase);
+    }
+
+    private applyExplosionDamageAtWorldPos(hitWorldPos: Vec3, phase: AttackPhase): void {
+        if (!this.context) return;
 
         const targets = EnemyRegistry.getDamageableTargets(DamageChannel.Area);
 
@@ -157,86 +161,16 @@ export class ChiliBombProjectile extends AttackBase {
         }
     }
 
-    private shouldDestroyForVisibleArea(): boolean {
+    private shouldCullOutsideVisibleArea(): boolean {
         if (!this.destroyWhenExitVisibleArea) {
             return false;
         }
 
         const uiTransform = this.node.getComponent(UITransform);
-        if (!uiTransform) {
-            return false;
-        }
-
-        const visibleOrigin = view.getVisibleOrigin();
-        const visibleSize = view.getVisibleSize();
-
-        return isRectFullyOutsideVisibleArea(uiTransform.getBoundingBoxToWorld(), {
-            x: visibleOrigin.x,
-            y: visibleOrigin.y,
-            width: visibleSize.width,
-            height: visibleSize.height,
-        });
+        return isNodeFullyOutsideVisibleArea(uiTransform, getVisibleAreaRect(view));
     }
 
-    private spawnImpactBurst(hitWorldPos: Vec3): void {
-        const parent = this.node.parent;
-        if (!parent || !parent.isValid) {
-            return;
-        }
-
-        const effectNode = new Node('ChiliExplosionBurst');
-        parent.addChild(effectNode);
-        effectNode.setWorldPosition(hitWorldPos);
-
-        const transform = effectNode.addComponent(UITransform);
-        const diameter = Math.max(96, this.impactAoeRadius * 2.8);
-        transform.setContentSize(diameter, diameter);
-
-        const opacity = effectNode.addComponent(UIOpacity);
-        const graphics = effectNode.addComponent(Graphics);
-        const state = {
-            coreRadius: Math.max(10, this.impactAoeRadius * 0.22),
-            ringRadius: Math.max(24, this.impactAoeRadius * 0.55),
-        };
-
-        const redraw = () => {
-            if (!graphics.isValid) return;
-
-            graphics.clear();
-
-            graphics.fillColor = new Color(255, 245, 180, 255);
-            graphics.circle(0, 0, state.coreRadius);
-            graphics.fill();
-
-            graphics.fillColor = new Color(255, 128, 48, 180);
-            graphics.circle(0, 0, state.coreRadius * 1.55);
-            graphics.fill();
-
-            graphics.lineWidth = Math.max(4, this.impactAoeRadius * 0.08);
-            graphics.strokeColor = new Color(255, 72, 32, 255);
-            graphics.circle(0, 0, state.ringRadius);
-            graphics.stroke();
-        };
-
-        redraw();
-
-        tween(state)
-            .to(0.22, {
-                coreRadius: Math.max(16, this.impactAoeRadius * 0.58),
-                ringRadius: Math.max(48, this.impactAoeRadius * 1.18),
-            }, {
-                onUpdate: () => redraw(),
-            })
-            .start();
-
-        tween(opacity)
-            .delay(0.05)
-            .to(0.18, { opacity: 0 })
-            .call(() => {
-                if (effectNode.isValid) {
-                    effectNode.destroy();
-                }
-            })
-            .start();
+    private spawnExplosionBurstVisual(hitWorldPos: Vec3): void {
+        spawnRadialExplosionBurst(this.node.parent, hitWorldPos, this.impactAoeRadius);
     }
 }

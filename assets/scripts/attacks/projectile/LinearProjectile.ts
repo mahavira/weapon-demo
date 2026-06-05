@@ -10,7 +10,7 @@ import { DamageResolver } from '../../combat/DamageResolver';
 import { FIRST_HIT_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { HitSystem } from '../../combat/HitSystem';
 import { DamageChannel } from '../../core/types/DamageChannel';
-import { isRectFullyOutsideVisibleArea } from './ProjectileViewportCulling';
+import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 
 const { ccclass, property } = _decorator;
 
@@ -76,7 +76,7 @@ export abstract class LinearProjectile extends AttackBase {
                         this.node.angle -= this.rotateSpeed;
                     }
 
-                    if (this.shouldDestroyForVisibleArea()) {
+                    if (this.shouldCullOutsideVisibleArea()) {
                         this.stopAttack();
                         return;
                     }
@@ -92,15 +92,12 @@ export abstract class LinearProjectile extends AttackBase {
     public stopAttack(): void {
         if (!this.node || !this.node.isValid) return;
 
-        this.isAlive = false;
-        Tween.stopAllByTarget(this.node);
-        this.resetState();
+        this.cleanupRuntimeState();
         this.node.destroy();
     }
 
     protected onDestroy(): void {
-        Tween.stopAllByTarget(this.node);
-        this.resetState();
+        this.cleanupRuntimeState();
     }
 
     protected applyDamageToTarget(target: Node, hitWorldPos: Vec3, phase: AttackPhase): void {
@@ -150,28 +147,18 @@ export abstract class LinearProjectile extends AttackBase {
         this.onFirstHit(firstHit.target, firstHit.hitWorldPos, phase);
     }
 
-    private shouldDestroyForVisibleArea(): boolean {
+    private shouldCullOutsideVisibleArea(): boolean {
         if (!this.destroyWhenExitVisibleArea) {
             return false;
         }
 
         const uiTransform = this.node.getComponent(UITransform);
-        if (!uiTransform) {
-            return false;
-        }
-
-        const visibleOrigin = view.getVisibleOrigin();
-        const visibleSize = view.getVisibleSize();
-
-        return isRectFullyOutsideVisibleArea(uiTransform.getBoundingBoxToWorld(), {
-            x: visibleOrigin.x,
-            y: visibleOrigin.y,
-            width: visibleSize.width,
-            height: visibleSize.height,
-        });
+        return isNodeFullyOutsideVisibleArea(uiTransform, getVisibleAreaRect(view));
     }
 
-    private resetState(): void {
+    private cleanupRuntimeState(): void {
+        this.isAlive = false;
+        Tween.stopAllByTarget(this.node);
         this.context = null;
         this.path = null;
         this.endWorldPos = null;

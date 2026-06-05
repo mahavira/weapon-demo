@@ -10,11 +10,11 @@ import { DamageSourceType } from '../core/types/DamageTypes';
 
 const { ccclass, property } = _decorator;
 
-type EndpointAttack = AttackBase & {
+type ProjectileWithEndpoint = AttackBase & {
     setEndWorldPos(endWorldPos: Vec3): void;
 };
 
-type AreaImpactAttack = AttackBase & {
+type ProjectileWithAreaImpact = AttackBase & {
     setImpactAoeRadius(radius: number): void;
 };
 
@@ -47,6 +47,13 @@ export class WeaponSystem extends Component {
     targetProvider: NearestTargetProvider | null = null;
 
     private nextFireTimeByWeaponId: Record<string, number> = {};
+
+    private static readonly DEFAULT_PROJECTILE_VOLLEY_COUNT = 3;
+    private static readonly DEFAULT_PROJECTILE_SPACING_X = 32;
+    private static readonly DEFAULT_PROJECTILE_TARGET_SPREAD_X = 32;
+    private static readonly DEFAULT_PROJECTILE_TRAVEL_DISTANCE = 1280;
+
+    private static readonly DEFAULT_PROJECTILE_SHOT_DELAY = 0;
 
     public setCurrentWeapon(weaponId: string): void {
         if (!WeaponConfigTable[weaponId]) {
@@ -85,7 +92,7 @@ export class WeaponSystem extends Component {
                 return this.fireBoomerang(config);
 
             case WeaponAttackType.MultiBullet:
-                return this.fireMultiBullet(config);
+                return this.fireProjectileVolley(config);
 
             default:
                 console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
@@ -133,8 +140,8 @@ export class WeaponSystem extends Component {
         }
 
         const boomerangAttack = node.getComponent(BoomerangProjectile);
-        if (boomerangAttack && config.returnDamageScale !== undefined) {
-            boomerangAttack.returnDamageScale = config.returnDamageScale;
+        if (boomerangAttack && config.boomerang?.returnDamageScale !== undefined) {
+            boomerangAttack.returnDamageScale = config.boomerang.returnDamageScale;
         }
 
         const context = new AttackContext({
@@ -154,46 +161,67 @@ export class WeaponSystem extends Component {
         return true;
     }
 
-    private fireMultiBullet(config: WeaponConfigData): boolean {
+    private fireProjectileVolley(config: WeaponConfigData): boolean {
         if (!this.weaponPoint || !this.targetProvider) return false;
 
         const target = this.targetProvider.getTarget();
         if (!target) {
-            console.warn('[WeaponSystem] MultiBullet has no target');
+            console.warn('[WeaponSystem] Projectile volley has no target');
             return false;
         }
 
-        const bulletCount = Math.max(1, Math.floor(config.bulletCount ?? 3));
-        const bulletSpacingX = config.bulletSpacingX ?? 32;
-        const bulletTargetSpreadX = config.bulletTargetSpreadX ?? 32;
-        const bulletTravelDistance = config.bulletTravelDistance ?? 1280;
-        const shotDelay = config.shotDelay ?? 0;
-        const centerIndex = (bulletCount - 1) / 2;
-        const targetWorldPos = target.worldPosition.clone();
-
-        for (let i = 0; i < bulletCount; i++) {
-            const offsetIndex = i - centerIndex;
-            const delay = shotDelay * i;
-            const aimWorldPos = targetWorldPos.clone();
-            aimWorldPos.x += offsetIndex * bulletTargetSpreadX;
-
+        for (const shot of this.buildProjectileVolleyShots(config, target.worldPosition.clone())) {
             this.scheduleOnce(() => {
                 if (!this.weaponPoint || !this.weaponPoint.isValid) return;
 
                 const startWorldPos = this.weaponPoint.worldPosition.clone();
-                startWorldPos.x += offsetIndex * bulletSpacingX;
-                const endWorldPos = config.projectileEndAtTarget
-                    ? aimWorldPos.clone()
-                    : this.getBulletEndWorldPos(startWorldPos, aimWorldPos, bulletTravelDistance);
+                startWorldPos.x += shot.startOffsetX;
+                const endWorldPos = this.resolveProjectileDestination(config, startWorldPos, shot.aimWorldPos);
 
-                this.spawnBullet(config, startWorldPos, endWorldPos, target);
-            }, delay);
+                this.spawnProjectileShot(config, startWorldPos, endWorldPos, target);
+            }, shot.delay);
         }
 
         return true;
     }
 
-    private spawnBullet(config: WeaponConfigData, startWorldPos: Vec3, endWorldPos: Vec3, target: Node | null): void {
+    private buildProjectileVolleyShots(config: WeaponConfigData, targetWorldPos: Vec3): Array<{
+        delay: number;
+        startOffsetX: number;
+        aimWorldPos: Vec3;
+    }> {
+        const projectileCount = Math.max(1, Math.floor(config.volley?.count ?? WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT));
+        const projectileSpacingX = config.volley?.spacingX ?? WeaponSystem.DEFAULT_PROJECTILE_SPACING_X;
+        const projectileTargetSpreadX = config.volley?.targetSpreadX ?? WeaponSystem.DEFAULT_PROJECTILE_TARGET_SPREAD_X;
+        const projectileShotDelay = config.volley?.shotDelay ?? WeaponSystem.DEFAULT_PROJECTILE_SHOT_DELAY;
+        const centerIndex = (projectileCount - 1) / 2;
+
+        return Array.from({ length: projectileCount }, (_unused, index) => {
+            const offsetIndex = index - centerIndex;
+            const aimWorldPos = targetWorldPos.clone();
+            aimWorldPos.x += offsetIndex * projectileTargetSpreadX;
+
+            return {
+                delay: projectileShotDelay * index,
+                startOffsetX: offsetIndex * projectileSpacingX,
+                aimWorldPos,
+            };
+        });
+    }
+
+    private resolveProjectileDestination(config: WeaponConfigData, startWorldPos: Vec3, aimWorldPos: Vec3): Vec3 {
+        if (config.flight?.endAtTarget) {
+            return aimWorldPos.clone();
+        }
+
+        return this.buildExtendedProjectileDestination(
+            startWorldPos,
+            aimWorldPos,
+            config.flight?.travelDistance ?? WeaponSystem.DEFAULT_PROJECTILE_TRAVEL_DISTANCE
+        );
+    }
+
+    private spawnProjectileShot(config: WeaponConfigData, startWorldPos: Vec3, endWorldPos: Vec3, target: Node | null): void {
         if (!this.projectileRoot || !this.prefabRegistry) return;
 
         const prefab = this.prefabRegistry.getPrefab(config.projectilePrefabKey);
@@ -209,7 +237,7 @@ export class WeaponSystem extends Component {
             return;
         }
 
-        if (!this.canSetEndWorldPos(attack)) {
+        if (!this.supportsProjectileEndpoint(attack)) {
             console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support setEndWorldPos`);
             node.destroy();
             return;
@@ -217,8 +245,8 @@ export class WeaponSystem extends Component {
 
         attack.setEndWorldPos(endWorldPos);
 
-        if (this.canSetImpactAoeRadius(attack)) {
-            attack.setImpactAoeRadius(config.impactAoeRadius ?? 0);
+        if (this.supportsAreaImpactRadius(attack)) {
+            attack.setImpactAoeRadius(config.impact?.aoeRadius ?? 0);
         }
 
         const context = new AttackContext({
@@ -239,11 +267,11 @@ export class WeaponSystem extends Component {
 
     private getBoomerangEndWorldPos(config: WeaponConfigData): Vec3 {
         const startWorldPos = this.weaponPoint?.worldPosition.clone() ?? new Vec3();
-        startWorldPos.y += config.boomerangForwardDistance ?? 360;
+        startWorldPos.y += config.boomerang?.forwardDistance ?? 360;
         return startWorldPos;
     }
 
-    private getBulletEndWorldPos(startWorldPos: Vec3, aimWorldPos: Vec3, travelDistance: number): Vec3 {
+    private buildExtendedProjectileDestination(startWorldPos: Vec3, aimWorldPos: Vec3, travelDistance: number): Vec3 {
         const dx = aimWorldPos.x - startWorldPos.x;
         const dy = aimWorldPos.y - startWorldPos.y;
         const length = Math.sqrt(dx * dx + dy * dy);
@@ -290,11 +318,11 @@ export class WeaponSystem extends Component {
         return attack;
     }
 
-    private canSetEndWorldPos(attack: AttackBase): attack is EndpointAttack {
+    private supportsProjectileEndpoint(attack: AttackBase): attack is ProjectileWithEndpoint {
         return typeof (attack as { setEndWorldPos?: unknown }).setEndWorldPos === 'function';
     }
 
-    private canSetImpactAoeRadius(attack: AttackBase): attack is AreaImpactAttack {
+    private supportsAreaImpactRadius(attack: AttackBase): attack is ProjectileWithAreaImpact {
         return typeof (attack as { setImpactAoeRadius?: unknown }).setImpactAoeRadius === 'function';
     }
 
@@ -309,8 +337,8 @@ export class WeaponSystem extends Component {
     }
 
     private applyProjectileVisualOverrides(node: Node, config: WeaponConfigData): void {
-        if (config.projectileScale !== undefined) {
-            node.setScale(config.projectileScale, config.projectileScale, 1);
+        if (config.flight?.visualScale !== undefined) {
+            node.setScale(config.flight.visualScale, config.flight.visualScale, 1);
         }
     }
 }

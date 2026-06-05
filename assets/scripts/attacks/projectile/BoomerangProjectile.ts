@@ -11,7 +11,7 @@ import { DamageInfo } from '../../combat/DamageInfo';
 import { HitSystem } from '../../combat/HitSystem';
 import { PENETRATING_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { DamageChannel } from '../../core/types/DamageChannel';
-import { isRectFullyOutsideVisibleArea } from './ProjectileViewportCulling';
+import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 
 const { ccclass, property } = _decorator;
 
@@ -85,7 +85,7 @@ export class BoomerangProjectile extends AttackBase {
                     this.node.setWorldPosition(currentWorldPos);
                     this.node.angle -= this.rotateSpeed;
 
-                    if (this.shouldDestroyForVisibleArea()) {
+                    if (this.shouldCullOutsideVisibleArea()) {
                         this.stopAttack();
                         return;
                     }
@@ -148,38 +148,26 @@ export class BoomerangProjectile extends AttackBase {
         return this.context.damageInfo;
     }
 
-    private shouldDestroyForVisibleArea(): boolean {
+    private shouldCullOutsideVisibleArea(): boolean {
         if (!this.destroyWhenExitVisibleArea) {
             return false;
         }
 
         const uiTransform = this.node.getComponent(UITransform);
-        if (!uiTransform) {
-            return false;
-        }
-
-        const visibleOrigin = view.getVisibleOrigin();
-        const visibleSize = view.getVisibleSize();
-
-        return isRectFullyOutsideVisibleArea(uiTransform.getBoundingBoxToWorld(), {
-            x: visibleOrigin.x,
-            y: visibleOrigin.y,
-            width: visibleSize.width,
-            height: visibleSize.height,
-        });
+        return isNodeFullyOutsideVisibleArea(uiTransform, getVisibleAreaRect(view));
     }
 
     public stopAttack(): void {
-        this.isAlive = false;
-        Tween.stopAllByTarget(this.node);
-        this.context = null;
-        this.path = null;
-        this.previousWorldPos = new Vec3();
-        this.hitTracker.clear();
+        this.cleanupRuntimeState();
         this.node.destroy();
     }
 
     protected onDestroy() {
+        this.cleanupRuntimeState();
+    }
+
+    private cleanupRuntimeState(): void {
+        this.isAlive = false;
         Tween.stopAllByTarget(this.node);
         this.context = null;
         this.path = null;
