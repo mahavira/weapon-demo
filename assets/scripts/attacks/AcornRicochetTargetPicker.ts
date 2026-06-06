@@ -41,7 +41,7 @@ export function pickRicochetTarget<TTarget>(
     return previousTargetCandidate?.target ?? null;
 }
 
-export function buildRicochetTargetCandidates(
+export function buildRicochetTargetCandidates<TTarget>(
     targets: readonly TTarget[],
     getWorldPos: (target: TTarget) => WorldPointLike
 ): RicochetTargetCandidate<TTarget>[] {

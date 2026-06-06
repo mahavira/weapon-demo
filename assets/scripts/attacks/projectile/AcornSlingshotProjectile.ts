@@ -1,4 +1,4 @@
-import { _decorator, Node, Tween, UITransform, Vec3, tween, view } from 'cc';
+import { _decorator, Node, Tween, UITransform, Vec2, Rect, Size, Sprite, SpriteFrame, Vec3, tween, view } from 'cc';
 import { AttackBase } from '../base/AttackBase';
 import { AttackContext } from '../base/AttackContext';
 import { AttackPhase } from '../../core/types/AttackTypes';
@@ -18,6 +18,11 @@ const { ccclass, property } = _decorator;
 
 @ccclass('AcornSlingshotProjectile')
 export class AcornSlingshotProjectile extends AttackBase {
+    private static readonly VISUAL_FRAME_WIDTH = 65;
+    private static readonly VISUAL_FRAME_HEIGHT = 182;
+    private static readonly VISUAL_FRAME_COUNT = 8;
+    private static readonly VISUAL_FRAME_DURATION = 1 / 16;
+
     @property
     travelSpeed: number = 960;
 
@@ -35,6 +40,15 @@ export class AcornSlingshotProjectile extends AttackBase {
     private previousTargetNode: Node | null = null;
     private currentTargetNode: Node | null = null;
     private hitCount: number = 0;
+    private visualSprite: Sprite | null = null;
+    private visualSpriteFrames: SpriteFrame[] = [];
+    private frameElapsedSeconds: number = 0;
+    private currentFrameIndex: number = 0;
+
+    protected onLoad(): void {
+        this.visualSprite = this.node.getChildByName('Visual')?.getComponent(Sprite) ?? null;
+        this.initializeVisualAnimation();
+    }
 
     public configureRicochet(params: Partial<AcornSlingshotRuntimeConfig>): void {
         this.runtimeConfig = buildAcornSlingshotRuntimeConfig(params);
@@ -53,9 +67,12 @@ export class AcornSlingshotProjectile extends AttackBase {
         this.previousTargetNode = null;
         this.currentTargetNode = initialTargetNode;
         this.hitCount = 0;
+        this.frameElapsedSeconds = 0;
+        this.currentFrameIndex = 0;
 
         this.node.setWorldPosition(attackContext.spawnWorldPos);
         this.node.active = true;
+        this.applyVisualFrame(0);
         this.flyToTarget(initialTargetNode);
     }
 
@@ -70,6 +87,21 @@ export class AcornSlingshotProjectile extends AttackBase {
 
     protected onDestroy(): void {
         this.cleanupRuntimeState();
+    }
+
+    protected update(dt: number): void {
+        if (!this.isAttackActive || this.visualSpriteFrames.length === 0) {
+            return;
+        }
+
+        this.frameElapsedSeconds += dt;
+        const nextFrameIndex = Math.floor(
+            this.frameElapsedSeconds / AcornSlingshotProjectile.VISUAL_FRAME_DURATION
+        ) % AcornSlingshotProjectile.VISUAL_FRAME_COUNT;
+
+        if (nextFrameIndex !== this.currentFrameIndex) {
+            this.applyVisualFrame(nextFrameIndex);
+        }
     }
 
     private flyToTarget(targetNode: Node): void {
@@ -190,7 +222,49 @@ export class AcornSlingshotProjectile extends AttackBase {
         const currentWorldPos = this.node.worldPosition;
         const dx = destinationWorldPos.x - currentWorldPos.x;
         const dy = destinationWorldPos.y - currentWorldPos.y;
-        this.node.angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        this.node.angle = Math.atan2(dy, dx) * 180 / Math.PI - 90;
+    }
+
+    private initializeVisualAnimation(): void {
+        const sourceSpriteFrame = this.visualSprite?.spriteFrame;
+        const sourceTexture = sourceSpriteFrame?.texture;
+        if (!this.visualSprite || !sourceSpriteFrame || !sourceTexture) {
+            return;
+        }
+
+        this.visualSpriteFrames = Array.from(
+            { length: AcornSlingshotProjectile.VISUAL_FRAME_COUNT },
+            (_unused, frameIndex) => {
+                const spriteFrame = new SpriteFrame();
+                spriteFrame.reset({
+                    texture: sourceTexture,
+                    rect: new Rect(
+                        frameIndex * AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
+                        0,
+                        AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
+                        AcornSlingshotProjectile.VISUAL_FRAME_HEIGHT
+                    ),
+                    originalSize: new Size(
+                        AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
+                        AcornSlingshotProjectile.VISUAL_FRAME_HEIGHT
+                    ),
+                    offset: new Vec2(0, 0),
+                }, true);
+                return spriteFrame;
+            }
+        );
+
+        this.visualSprite.spriteFrame = this.visualSpriteFrames[0] ?? null;
+    }
+
+    private applyVisualFrame(frameIndex: number): void {
+        const nextSpriteFrame = this.visualSpriteFrames[frameIndex];
+        if (!this.visualSprite || !nextSpriteFrame) {
+            return;
+        }
+
+        this.currentFrameIndex = frameIndex;
+        this.visualSprite.spriteFrame = nextSpriteFrame;
     }
 
     private getTargetWorldCenter(targetNode: Node): Vec3 {
@@ -224,5 +298,7 @@ export class AcornSlingshotProjectile extends AttackBase {
         this.previousTargetNode = null;
         this.currentTargetNode = null;
         this.hitCount = 0;
+        this.frameElapsedSeconds = 0;
+        this.currentFrameIndex = 0;
     }
 }
