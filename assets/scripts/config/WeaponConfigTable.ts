@@ -2,6 +2,7 @@ export enum WeaponAttackType {
     Boomerang = 'boomerang',
     Projectile = 'projectile',
     Beam = 'beam',
+    Chain = 'chain',
 }
 
 export interface WeaponBoomerangConfig {
@@ -34,6 +35,14 @@ export interface WeaponBeamConfig {
     beamRange?: number;
 }
 
+export interface WeaponChainConfig {
+    maxTargets?: number;
+    chainRange?: number;
+    segmentDurationSeconds?: number;
+    initialHitRadius?: number;
+    bounceDamageScale?: number;
+}
+
 export interface WeaponConfigData {
     id: string;
     name: string;
@@ -47,6 +56,7 @@ export interface WeaponConfigData {
     flight?: WeaponProjectileFlightConfig;
     impact?: WeaponProjectileImpactConfig;
     beam?: WeaponBeamConfig;
+    chain?: WeaponChainConfig;
 }
 
 /**
@@ -139,6 +149,22 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             beamWidth: 18,
             beamWidthMultiplier: 1,
             beamRange: 1020,
+        },
+    },
+
+    electric_corn: {
+        id: 'electric_corn',
+        name: '电击玉米',
+        attackType: WeaponAttackType.Chain,
+        projectilePrefabKey: 'electric_corn_chain_attack',
+        damage: 8,
+        cooldown: 1,
+        chain: {
+            maxTargets: 5,
+            chainRange: 240,
+            segmentDurationSeconds: 0.08,
+            initialHitRadius: 48,
+            bounceDamageScale: 1,
         },
     },
 };

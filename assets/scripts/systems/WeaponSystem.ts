@@ -7,6 +7,7 @@ import { AttackContext } from '../attacks/base/AttackContext';
 import { isBeamRuntimeConfigReceiver } from '../attacks/BeamAttackContract';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
+import { ElectricCornChainAttack } from '../attacks/ElectricCornChainAttack';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
 
@@ -96,6 +97,9 @@ export class WeaponSystem extends Component {
 
             case WeaponAttackType.Beam:
                 return this.fireBeamAttack(config);
+
+            case WeaponAttackType.Chain:
+                return this.fireChainAttack(config);
 
             default:
                 console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
@@ -211,6 +215,41 @@ export class WeaponSystem extends Component {
         return true;
     }
 
+    private fireChainAttack(config: WeaponConfigData): boolean {
+        if (!this.weaponPoint || !this.targetProvider) return false;
+
+        const primaryTarget = this.targetProvider.getPrimaryTarget();
+        if (!primaryTarget) {
+            console.warn('[WeaponSystem] Chain attack has no target');
+            return false;
+        }
+
+        const spawnedAttack = this.createAttackInstance(config);
+        if (!spawnedAttack) {
+            return false;
+        }
+
+        const { node, attack } = spawnedAttack;
+        const chainAttack = node.getComponent(ElectricCornChainAttack);
+        if (!chainAttack) {
+            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} is missing ElectricCornChainAttack`);
+            node.destroy();
+            return false;
+        }
+
+        chainAttack.configureChain(config.chain ?? {});
+
+        const context = this.buildAttackContext(
+            config,
+            this.weaponPoint.worldPosition.clone(),
+            primaryTarget.worldPosition.clone(),
+            primaryTarget
+        );
+
+        attack.startAttack(context);
+        return true;
+    }
+
     private buildProjectileShotPlans(config: WeaponConfigData, targetWorldPos: Vec3): ProjectileShotPlan[] {
         const projectileCount = Math.max(1, Math.floor(config.volley?.count ?? WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT));
         const projectileSpacingX = config.volley?.spacingX ?? WeaponSystem.DEFAULT_PROJECTILE_SPACING_X;
@@ -303,6 +342,7 @@ export class WeaponSystem extends Component {
         const node = instantiate(prefab);
         this.projectileRoot.addChild(node);
         this.applyProjectileVisualOverrides(node, config);
+        this.attachAttackComponentIfNeeded(node, config);
 
         const attack = this.getAttackComponent(node, config.projectilePrefabKey);
         if (!attack) {
@@ -311,6 +351,18 @@ export class WeaponSystem extends Component {
         }
 
         return { node, attack };
+    }
+
+    private attachAttackComponentIfNeeded(node: Node, config: WeaponConfigData): void {
+        if (config.attackType !== WeaponAttackType.Chain) {
+            return;
+        }
+
+        if (node.getComponent(ElectricCornChainAttack)) {
+            return;
+        }
+
+        node.addComponent(ElectricCornChainAttack);
     }
 
     private buildAttackContext(
@@ -332,11 +384,24 @@ export class WeaponSystem extends Component {
     private buildAttackDamageInfo(config: WeaponConfigData): DamageInfo {
         return new DamageInfo({
             amount: config.damage,
-            sourceType: config.attackType === WeaponAttackType.Beam
-                ? DamageSourceType.Beam
-                : DamageSourceType.Projectile,
+            sourceType: this.resolveDamageSourceType(config.attackType),
             sourceWeaponId: config.id,
         });
+    }
+
+    private resolveDamageSourceType(attackType: WeaponAttackType): DamageSourceType {
+        switch (attackType) {
+            case WeaponAttackType.Beam:
+                return DamageSourceType.Beam;
+
+            case WeaponAttackType.Chain:
+                return DamageSourceType.Weapon;
+
+            case WeaponAttackType.Boomerang:
+            case WeaponAttackType.Projectile:
+            default:
+                return DamageSourceType.Projectile;
+        }
     }
 
     private getBoomerangForwardDestinationWorldPos(config: WeaponConfigData): Vec3 {

@@ -20,11 +20,26 @@ test('sunflower spotlight mirror is configured as a beam weapon', () => {
     assert.ok(config);
     assert.equal(config.attackType, WeaponAttackType.Beam);
     assert.equal(config.damage, 48);
-    assert.equal(config.cooldown, 4);
+    assert.equal(config.cooldown, 2);
     assert.equal(config.projectilePrefabKey, 'sunflower_spotlight_mirror_beam');
-    assert.equal(config.beam?.durationSeconds, 3);
+    assert.equal(config.beam?.durationSeconds, 2);
     assert.equal(config.beam?.tickIntervalSeconds, 0.25);
     assert.equal(config.beam?.beamWidth, 18);
     assert.equal(config.beam?.beamWidthMultiplier, 1);
     assert.equal(config.beam?.beamRange, 1020);
+});
+
+test('electric corn is configured as a chain weapon', () => {
+    const config = WeaponConfigTable.electric_corn;
+
+    assert.ok(config);
+    assert.equal(config.attackType, WeaponAttackType.Chain);
+    assert.equal(config.damage, 8);
+    assert.equal(config.cooldown, 3);
+    assert.equal(config.projectilePrefabKey, 'electric_corn_chain_attack');
+    assert.equal(config.chain?.maxTargets, 5);
+    assert.equal(config.chain?.chainRange, 240);
+    assert.equal(config.chain?.segmentDurationSeconds, 0.08);
+    assert.equal(config.chain?.initialHitRadius, 48);
+    assert.equal(config.chain?.bounceDamageScale, 1);
 });
