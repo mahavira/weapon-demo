@@ -94,4 +94,3 @@ API: `applyStatus`, `tickStatuses`, `removeStatus`, `hasStatus`
 | Lv15 | 伤害倍率+0.2 |
 | Lv20 | 终极质变 |
 
-升级消耗见 [Game Balance](./game-balance.md#武器升级消耗)。
