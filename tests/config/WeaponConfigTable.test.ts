@@ -46,3 +46,15 @@ test('electric corn is configured as a chain weapon', () => {
     assert.equal(config.chain?.lateralAmplitudeScale, 0.5);
     assert.equal(config.chain?.keepPreviousSegmentsVisible, true);
 });
+
+test('acorn slingshot is configured as a ricochet weapon', () => {
+    const config = WeaponConfigTable.acorn_slingshot;
+
+    assert.ok(config);
+    assert.equal(config.attackType, WeaponAttackType.Ricochet);
+    assert.equal(config.damage, 7);
+    assert.equal(config.projectilePrefabKey, 'acorn_slingshot_projectile');
+    assert.equal(config.ricochet?.maxHits, 4);
+    assert.equal(config.ricochet?.ricochetRange, 280);
+    assert.equal(config.ricochet?.allowBounceBackToPreviousTarget, true);
+});

@@ -8,6 +8,7 @@ import { isBeamRuntimeConfigReceiver } from '../attacks/BeamAttackContract';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
 import { ElectricCornChainAttack } from '../attacks/ElectricCornChainAttack';
+import { AcornSlingshotProjectile } from '../attacks/projectile/AcornSlingshotProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
 
@@ -100,6 +101,9 @@ export class WeaponSystem extends Component {
 
             case WeaponAttackType.Chain:
                 return this.fireChainAttack(config);
+
+            case WeaponAttackType.Ricochet:
+                return this.fireRicochetAttack(config);
 
             default:
                 console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
@@ -250,6 +254,41 @@ export class WeaponSystem extends Component {
         return true;
     }
 
+    private fireRicochetAttack(config: WeaponConfigData): boolean {
+        if (!this.weaponPoint || !this.targetProvider) return false;
+
+        const primaryTarget = this.targetProvider.getPrimaryTarget();
+        if (!primaryTarget) {
+            console.warn('[WeaponSystem] Ricochet attack has no target');
+            return false;
+        }
+
+        const spawnedAttack = this.createAttackInstance(config);
+        if (!spawnedAttack) {
+            return false;
+        }
+
+        const { node, attack } = spawnedAttack;
+        const ricochetAttack = node.getComponent(AcornSlingshotProjectile);
+        if (!ricochetAttack) {
+            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} is missing AcornSlingshotProjectile`);
+            node.destroy();
+            return false;
+        }
+
+        ricochetAttack.configureRicochet(config.ricochet ?? {});
+
+        const context = this.buildAttackContext(
+            config,
+            this.weaponPoint.worldPosition.clone(),
+            primaryTarget.worldPosition.clone(),
+            primaryTarget
+        );
+
+        attack.startAttack(context);
+        return true;
+    }
+
     private buildProjectileShotPlans(config: WeaponConfigData, targetWorldPos: Vec3): ProjectileShotPlan[] {
         const projectileCount = Math.max(1, Math.floor(config.volley?.count ?? WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT));
         const projectileSpacingX = config.volley?.spacingX ?? WeaponSystem.DEFAULT_PROJECTILE_SPACING_X;
@@ -355,14 +394,21 @@ export class WeaponSystem extends Component {
 
     private attachAttackComponentIfNeeded(node: Node, config: WeaponConfigData): void {
         if (config.attackType !== WeaponAttackType.Chain) {
+            if (config.attackType !== WeaponAttackType.Ricochet) {
+                return;
+            }
+        }
+
+        if (config.attackType === WeaponAttackType.Chain) {
+            if (!node.getComponent(ElectricCornChainAttack)) {
+                node.addComponent(ElectricCornChainAttack);
+            }
             return;
         }
 
-        if (node.getComponent(ElectricCornChainAttack)) {
-            return;
+        if (!node.getComponent(AcornSlingshotProjectile)) {
+            node.addComponent(AcornSlingshotProjectile);
         }
-
-        node.addComponent(ElectricCornChainAttack);
     }
 
     private buildAttackContext(

@@ -3,6 +3,7 @@ export enum WeaponAttackType {
     Projectile = 'projectile',
     Beam = 'beam',
     Chain = 'chain',
+    Ricochet = 'ricochet',
 }
 
 export interface WeaponBoomerangConfig {
@@ -46,6 +47,12 @@ export interface WeaponChainConfig {
     keepPreviousSegmentsVisible?: boolean;
 }
 
+export interface WeaponRicochetConfig {
+    maxHits?: number;
+    ricochetRange?: number;
+    allowBounceBackToPreviousTarget?: boolean;
+}
+
 export interface WeaponConfigData {
     id: string;
     name: string;
@@ -60,6 +67,7 @@ export interface WeaponConfigData {
     impact?: WeaponProjectileImpactConfig;
     beam?: WeaponBeamConfig;
     chain?: WeaponChainConfig;
+    ricochet?: WeaponRicochetConfig;
 }
 
 /**
@@ -171,6 +179,20 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             hitDelaySeconds: 0.02,
             lateralAmplitudeScale: 0.5,
             keepPreviousSegmentsVisible: true,
+        },
+    },
+
+    acorn_slingshot: {
+        id: 'acorn_slingshot',
+        name: '橡果弹弓',
+        attackType: WeaponAttackType.Ricochet,
+        projectilePrefabKey: 'acorn_slingshot_projectile',
+        damage: 7,
+        cooldown: 0.8,
+        ricochet: {
+            maxHits: 4,
+            ricochetRange: 280,
+            allowBounceBackToPreviousTarget: true,
         },
     },
 };
