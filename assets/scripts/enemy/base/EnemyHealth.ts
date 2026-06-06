@@ -1,9 +1,15 @@
 import { _decorator, Component } from 'cc';
 import { DamageInfo } from '../../combat/DamageInfo';
 import { IDamageable } from '../../core/interfaces/IDamageable';
-import { EnemyVisual } from './EnemyVisual';
 
 const { ccclass, property } = _decorator;
+
+export interface EnemyDamageResult {
+    previousHp: number;
+    currentHp: number;
+    maxHp: number;
+    didDie: boolean;
+}
 
 @ccclass('EnemyHealth')
 export class EnemyHealth extends Component implements IDamageable {
@@ -17,19 +23,25 @@ export class EnemyHealth extends Component implements IDamageable {
         console.log(`Enemy HP: ${this._hp}/${this.maxHp}`);
     }
 
-    public takeDamage(info: DamageInfo) {
-        if (this._hp <= 0) return;
+    public takeDamage(info: DamageInfo): EnemyDamageResult | null {
+        if (this._hp <= 0) return null;
 
         const previousHp = this._hp;
         this._hp = Math.max(0, this._hp - info.amount);
         console.log(`Enemy take damage: ${info.amount}, source: ${info.sourceWeaponId}, HP: ${this._hp}/${this.maxHp}`);
 
-        const enemyVisual = this.node.getComponentInChildren(EnemyVisual);
-        enemyVisual?.playDamageFeedback(previousHp, this._hp, this.maxHp);
+        const damageResult: EnemyDamageResult = {
+            previousHp,
+            currentHp: this._hp,
+            maxHp: this.maxHp,
+            didDie: this._hp <= 0,
+        };
 
-        if (this._hp <= 0) {
+        if (damageResult.didDie) {
             this.die();
         }
+
+        return damageResult;
     }
 
     public getHp(): number {

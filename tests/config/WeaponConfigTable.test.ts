@@ -38,11 +38,11 @@ test('electric corn is configured as a chain weapon', () => {
     assert.equal(config.cooldown, 1);
     assert.equal(config.projectilePrefabKey, 'electric_corn_chain_attack');
     assert.equal(config.chain?.maxTargets, 5);
-    assert.equal(config.chain?.chainRange, 240);
-    assert.equal(config.chain?.segmentDurationSeconds, 0.28);
+    assert.equal(config.chain?.chainRange, 340);
+    assert.equal(config.chain?.segmentDurationSeconds, 0.38);
     assert.equal(config.chain?.initialHitRadius, 48);
     assert.equal(config.chain?.bounceDamageScale, 1);
-    assert.equal(config.chain?.hitDelaySeconds, 0.2);
+    assert.equal(config.chain?.hitDelaySeconds, 0.02);
     assert.equal(config.chain?.lateralAmplitudeScale, 0.5);
     assert.equal(config.chain?.keepPreviousSegmentsVisible, true);
 });

@@ -2,15 +2,14 @@ import {
     _decorator,
     Color,
     Component,
-    Graphics,
-    Node,
     Sprite,
     Tween,
     tween,
-    UIOpacity,
     UITransform,
     Vec3,
 } from 'cc';
+import { EnemyHealthBarRenderer } from './EnemyHealthBarRenderer';
+import { EnemyStatusVisualRenderer } from './EnemyStatusVisualRenderer';
 
 const { ccclass, property } = _decorator;
 
@@ -29,30 +28,9 @@ export class EnemyVisual extends Component {
     private burningIntensity = 0;
     private burningTargetIntensity = 0;
     private burningPulseTime = 0;
-    private burningFlameNode: Node | null = null;
-    private burningSmokeNode: Node | null = null;
-    private beamScorchNode: Node | null = null;
-    private healthBarRootNode: Node | null = null;
-    private healthBarTrackGraphics: Graphics | null = null;
-    private healthBarDamageLagGraphics: Graphics | null = null;
-    private healthBarFillGraphics: Graphics | null = null;
-    private burningFlameGraphics: Graphics | null = null;
-    private beamScorchGraphics: Graphics | null = null;
-    private isBurningSmokeScheduled = false;
-    private readonly hitFlashState = { mix: 0, scale: 1 };
-    private readonly burningSmokeSpawnTask = () => this.spawnSmokePuff();
-    private readonly beamScorchState = {
-        innerRadius: 0,
-        outerRadius: 0,
-    };
-    private readonly healthBarState = {
-        hpRatio: 1,
-        damageLagRatio: 1,
-    };
-    private readonly healthBarSize = {
-        width: 48,
-        height: 7,
-    };
+    private readonly hitFlashState = { flashBlendRatio: 0, flashScale: 1 };
+    private statusVisualRenderer: EnemyStatusVisualRenderer | null = null;
+    private healthBarRenderer: EnemyHealthBarRenderer | null = null;
 
     protected onLoad(): void {
         this.sprite = this.getComponent(Sprite);
@@ -60,9 +38,18 @@ export class EnemyVisual extends Component {
             this.baseColor = this.sprite.color.clone();
         }
 
-        this.ensureHealthBar();
+        this.statusVisualRenderer = new EnemyStatusVisualRenderer(
+            this.node,
+            (callback, intervalSeconds) => this.schedule(callback, intervalSeconds),
+            (callback) => this.unschedule(callback),
+            () => this.handleBurningSmokeSpawn(),
+            () => this.getPrimaryVisualHeight(),
+            () => this.burningTargetIntensity,
+            () => this.burningPulseTime,
+        );
+        this.healthBarRenderer = new EnemyHealthBarRenderer(this.node);
+        this.healthBarRenderer.ensure(this.getPrimaryVisualHeight());
         this.updateSpriteColor();
-        this.redrawHealthBar();
     }
 
     protected update(deltaTime: number): void {
@@ -77,9 +64,7 @@ export class EnemyVisual extends Component {
 
         if (this.burningIntensity > 0.001) {
             this.burningPulseTime += deltaTime;
-            this.redrawBurningFlameLayer();
-        } else if (previousIntensity > 0.001 && this.burningFlameGraphics) {
-            this.burningFlameGraphics.clear();
+            this.statusVisualRenderer?.redrawBurningFlameLayer();
         }
 
         if (Math.abs(previousIntensity - this.burningIntensity) > 0.001) {
@@ -105,105 +90,52 @@ export class EnemyVisual extends Component {
 
         Tween.stopAllByTarget(this.hitFlashState);
         tween(this.hitFlashState)
-            .set({ mix: 1, scale: 1.08 })
-            .to(0.04, { mix: 0.55, scale: 1.02 }, {
+            .set({ flashBlendRatio: 1, flashScale: 1.08 })
+            .to(0.04, { flashBlendRatio: 0.55, flashScale: 1.02 }, {
                 onUpdate: () => this.updateSpriteColor(),
             })
-            .to(0.08, { mix: 0, scale: 1 }, {
+            .to(0.08, { flashBlendRatio: 0, flashScale: 1 }, {
                 onUpdate: () => this.updateSpriteColor(),
             })
             .start();
     }
 
     public playDamageFeedback(previousHp: number, currentHp: number, maxHp: number): void {
-        this.ensureHealthBar();
-
-        const safeMaxHp = Math.max(1, maxHp);
-        const hpRatio = this.clamp01(currentHp / safeMaxHp);
-        const previousHpRatio = this.clamp01(previousHp / safeMaxHp);
-        this.healthBarState.hpRatio = hpRatio;
-        this.healthBarState.damageLagRatio = Math.max(this.healthBarState.damageLagRatio, previousHpRatio);
-        this.redrawHealthBar();
-
-        Tween.stopAllByTarget(this.healthBarState);
-        tween(this.healthBarState)
-            .delay(0.04)
-            .to(0.32, { damageLagRatio: hpRatio }, {
-                onUpdate: () => this.redrawHealthBar(),
-            })
-            .start();
+        this.healthBarRenderer?.syncHealth(previousHp, currentHp, maxHp);
     }
 
     public playBurningStart(): void {
-        this.ensureBurningLayerNodes();
         this.burningTargetIntensity = 1;
-        this.scheduleSmokeSpawn();
+        this.statusVisualRenderer?.playBurningStart();
         this.updateSpriteColor();
     }
 
     public playBurningLoop(intensity: number = 1): void {
-        this.ensureBurningLayerNodes();
         this.burningTargetIntensity = this.clamp01(intensity);
-        this.scheduleSmokeSpawn();
+        this.statusVisualRenderer?.playBurningLoop();
         this.updateSpriteColor();
     }
 
     public playBurningStop(): void {
         this.burningTargetIntensity = 0;
-        this.unschedule(this.burningSmokeSpawnTask);
-        this.isBurningSmokeScheduled = false;
-        this.fadeOutBurningLayer(this.burningFlameNode);
-        this.fadeOutBurningLayer(this.burningSmokeNode);
+        this.statusVisualRenderer?.playBurningStop();
         this.updateSpriteColor();
     }
 
     public playDeath(): void {
-        this.clearBeamScorch();
+        this.statusVisualRenderer?.cleanup();
         // TODO: add death animation.
     }
 
     public playBeamScorch(beamWidth: number): void {
-        this.ensureBeamScorchNode();
-        if (!this.beamScorchNode || !this.beamScorchGraphics) {
-            return;
-        }
-
-        const scorchRadius = Math.max(10, beamWidth * 0.22);
-        const transform = this.beamScorchNode.getComponent(UITransform) ?? this.beamScorchNode.addComponent(UITransform);
-        transform.setContentSize(scorchRadius * 4, scorchRadius * 4);
-        this.beamScorchNode.setPosition(this.getBeamScorchLocalPos(scorchRadius));
-
-        this.beamScorchState.innerRadius = scorchRadius * 0.45;
-        this.beamScorchState.outerRadius = scorchRadius;
-        this.redrawBeamScorchLayer();
-
-        const opacity = this.beamScorchNode.getComponent(UIOpacity) ?? this.beamScorchNode.addComponent(UIOpacity);
-        Tween.stopAllByTarget(opacity);
-        Tween.stopAllByTarget(this.beamScorchState);
-        opacity.opacity = 180;
-
-        tween(this.beamScorchState)
-            .to(0.18, {
-                innerRadius: scorchRadius * 0.18,
-                outerRadius: scorchRadius * 1.45,
-            }, {
-                onUpdate: () => this.redrawBeamScorchLayer(),
-            })
-            .start();
-
-        tween(opacity)
-            .to(0.18, { opacity: 0 })
-            .call(() => this.clearBeamScorch())
-            .start();
+        this.statusVisualRenderer?.playBeamScorch(beamWidth);
     }
 
     protected onDestroy(): void {
         Tween.stopAllByTarget(this.node);
         Tween.stopAllByTarget(this.hitFlashState);
-        Tween.stopAllByTarget(this.beamScorchState);
-        Tween.stopAllByTarget(this.healthBarState);
-        this.unschedule(this.burningSmokeSpawnTask);
-        this.isBurningSmokeScheduled = false;
+        this.healthBarRenderer?.stopTweens();
+        this.statusVisualRenderer?.cleanup();
     }
 
     private updateSpriteColor(): void {
@@ -215,242 +147,9 @@ export class EnemyVisual extends Component {
             ? 0.88 + Math.sin(this.burningPulseTime * 10) * 0.12
             : 1;
         const burnColor = this.mixColor(this.baseColor, this.burningTargetColor, this.clamp01(this.burningIntensity * pulseFactor));
-        const finalColor = this.mixColor(burnColor, this.hitFlashColor, this.clamp01(this.hitFlashState.mix));
+        const finalColor = this.mixColor(burnColor, this.hitFlashColor, this.clamp01(this.hitFlashState.flashBlendRatio));
         this.sprite.color = finalColor;
-        this.sprite.node.setScale(this.hitFlashState.scale, this.hitFlashState.scale, 1);
-    }
-
-    private ensureBurningLayerNodes(): void {
-        if (!this.burningFlameNode || !this.burningFlameNode.isValid) {
-            this.burningFlameNode = new Node('BurningFlameLayer');
-            const flameTransform = this.burningFlameNode.addComponent(UITransform);
-            flameTransform.setContentSize(72, 72);
-            this.burningFlameGraphics = this.burningFlameNode.addComponent(Graphics);
-            this.burningFlameNode.addComponent(UIOpacity).opacity = 220;
-            this.node.addChild(this.burningFlameNode);
-        } else {
-            const flameOpacity = this.burningFlameNode.getComponent(UIOpacity) ?? this.burningFlameNode.addComponent(UIOpacity);
-            Tween.stopAllByTarget(flameOpacity);
-            flameOpacity.opacity = 220;
-        }
-
-        if (!this.burningSmokeNode || !this.burningSmokeNode.isValid) {
-            this.burningSmokeNode = new Node('BurningSmokeLayer');
-            const smokeTransform = this.burningSmokeNode.addComponent(UITransform);
-            smokeTransform.setContentSize(84, 96);
-            this.node.addChild(this.burningSmokeNode);
-        } else {
-            const smokeOpacity = this.burningSmokeNode.getComponent(UIOpacity);
-            if (smokeOpacity) {
-                Tween.stopAllByTarget(smokeOpacity);
-                smokeOpacity.opacity = 255;
-            }
-        }
-    }
-
-    private ensureBeamScorchNode(): void {
-        if (!this.beamScorchNode || !this.beamScorchNode.isValid) {
-            this.beamScorchNode = new Node('BeamScorchStatusLayer');
-            const scorchTransform = this.beamScorchNode.addComponent(UITransform);
-            scorchTransform.setContentSize(64, 64);
-            this.beamScorchGraphics = this.beamScorchNode.addComponent(Graphics);
-            this.beamScorchNode.addComponent(UIOpacity).opacity = 0;
-            this.node.addChild(this.beamScorchNode);
-            return;
-        }
-
-        const scorchOpacity = this.beamScorchNode.getComponent(UIOpacity) ?? this.beamScorchNode.addComponent(UIOpacity);
-        Tween.stopAllByTarget(scorchOpacity);
-        scorchOpacity.opacity = 180;
-    }
-
-    private ensureHealthBar(): void {
-        if (this.healthBarRootNode && this.healthBarRootNode.isValid) {
-            return;
-        }
-
-        this.healthBarRootNode = new Node('HealthBarLayer');
-        const transform = this.healthBarRootNode.addComponent(UITransform);
-        transform.setContentSize(this.healthBarSize.width, 16);
-        this.healthBarRootNode.setPosition(0, this.getPrimaryVisualHeight() * 0.62 + 16, 0);
-
-        const trackNode = new Node('HealthBarTrackLayer');
-        const damageLagNode = new Node('HealthBarDamageLagLayer');
-        const fillNode = new Node('HealthBarFillLayer');
-
-        for (const barNode of [trackNode, damageLagNode, fillNode]) {
-            this.healthBarRootNode.addChild(barNode);
-            const barTransform = barNode.addComponent(UITransform);
-            barTransform.setContentSize(this.healthBarSize.width, this.healthBarSize.height);
-        }
-
-        this.healthBarTrackGraphics = trackNode.addComponent(Graphics);
-        this.healthBarDamageLagGraphics = damageLagNode.addComponent(Graphics);
-        this.healthBarFillGraphics = fillNode.addComponent(Graphics);
-        this.node.addChild(this.healthBarRootNode);
-    }
-
-    private redrawHealthBar(): void {
-        this.ensureHealthBar();
-        if (!this.healthBarTrackGraphics || !this.healthBarDamageLagGraphics || !this.healthBarFillGraphics) {
-            return;
-        }
-
-        const width = this.healthBarSize.width;
-        const height = this.healthBarSize.height;
-        const left = -width * 0.5;
-        const top = -height * 0.5;
-        const hpWidth = width * this.healthBarState.hpRatio;
-        const damageLagWidth = width * this.healthBarState.damageLagRatio;
-
-        this.healthBarTrackGraphics.clear();
-        this.healthBarTrackGraphics.fillColor = new Color(14, 20, 28, 220);
-        this.healthBarTrackGraphics.roundRect(left, top, width, height, 3);
-        this.healthBarTrackGraphics.fill();
-
-        this.healthBarDamageLagGraphics.clear();
-        this.healthBarDamageLagGraphics.fillColor = new Color(255, 255, 255, 220);
-        this.healthBarDamageLagGraphics.roundRect(left, top, damageLagWidth, height, 3);
-        this.healthBarDamageLagGraphics.fill();
-
-        this.healthBarFillGraphics.clear();
-        this.healthBarFillGraphics.fillColor = new Color(92, 235, 120, 255);
-        this.healthBarFillGraphics.roundRect(left, top, hpWidth, height, 3);
-        this.healthBarFillGraphics.fill();
-    }
-
-    private redrawBeamScorchLayer(): void {
-        if (!this.beamScorchGraphics) {
-            return;
-        }
-
-        const scorchGraphics = this.beamScorchGraphics;
-        scorchGraphics.clear();
-        scorchGraphics.fillColor = new Color(255, 246, 214, 160);
-        scorchGraphics.circle(0, 0, this.beamScorchState.innerRadius);
-        scorchGraphics.fill();
-
-        scorchGraphics.fillColor = new Color(255, 156, 62, 110);
-        scorchGraphics.circle(0, 0, this.beamScorchState.outerRadius);
-        scorchGraphics.fill();
-
-        scorchGraphics.strokeColor = new Color(255, 106, 36, 180);
-        scorchGraphics.lineWidth = 1.5;
-        scorchGraphics.circle(0, 0, this.beamScorchState.outerRadius * 1.16);
-        scorchGraphics.stroke();
-    }
-
-    private getBeamScorchLocalPos(scorchRadius: number): Vec3 {
-        const visualHeight = this.getPrimaryVisualHeight();
-        return new Vec3(0, Math.max(scorchRadius * 0.9, visualHeight * 0.18), 0);
-    }
-
-    private redrawBurningFlameLayer(): void {
-        if (!this.burningFlameGraphics) {
-            return;
-        }
-
-        const pulseFactor = 0.92 + Math.sin(this.burningPulseTime * 12) * 0.08;
-        const flameHeight = 18 + this.burningIntensity * 18 * pulseFactor;
-        const flameSpread = 8 + this.burningIntensity * 9;
-        const flameGraphics = this.burningFlameGraphics;
-
-        flameGraphics.clear();
-        flameGraphics.fillColor = new Color(255, 90, 18, 180);
-        flameGraphics.circle(-flameSpread, -4, 7 + this.burningIntensity * 5);
-        flameGraphics.circle(0, flameHeight * 0.35, 9 + this.burningIntensity * 6);
-        flameGraphics.circle(flameSpread, 2, 8 + this.burningIntensity * 5);
-        flameGraphics.fill();
-
-        flameGraphics.fillColor = new Color(255, 192, 72, 170);
-        flameGraphics.circle(-flameSpread * 0.4, flameHeight * 0.2, 5 + this.burningIntensity * 4);
-        flameGraphics.circle(flameSpread * 0.5, flameHeight * 0.12, 4 + this.burningIntensity * 3);
-        flameGraphics.fill();
-    }
-
-    private scheduleSmokeSpawn(): void {
-        if (this.isBurningSmokeScheduled) {
-            return;
-        }
-
-        this.schedule(this.burningSmokeSpawnTask, 0.28);
-        this.isBurningSmokeScheduled = true;
-    }
-
-    private spawnSmokePuff(): void {
-        if (!this.burningSmokeNode || !this.burningSmokeNode.isValid || this.burningTargetIntensity <= 0.01) {
-            return;
-        }
-
-        const smokeNode = new Node('BurningSmokePuff');
-        const smokeTransform = smokeNode.addComponent(UITransform);
-        smokeTransform.setContentSize(24, 24);
-        const smokeOpacity = smokeNode.addComponent(UIOpacity);
-        smokeOpacity.opacity = 120;
-        const smokeGraphics = smokeNode.addComponent(Graphics);
-        smokeGraphics.fillColor = new Color(84, 84, 84, 140);
-        smokeGraphics.circle(0, 0, 8 + Math.random() * 3);
-        smokeGraphics.fill();
-
-        smokeNode.setPosition((Math.random() - 0.5) * 24, 10 + Math.random() * 10, 0);
-        smokeNode.setScale(0.7 + Math.random() * 0.25, 0.7 + Math.random() * 0.25, 1);
-        this.burningSmokeNode.addChild(smokeNode);
-
-        tween(smokeNode)
-            .to(0.65, {
-                position: new Vec3(smokeNode.position.x + (Math.random() - 0.5) * 18, smokeNode.position.y + 34, 0),
-                scale: new Vec3(1.2, 1.2, 1),
-            })
-            .call(() => {
-                if (smokeNode.isValid) {
-                    smokeNode.destroy();
-                }
-            })
-            .start();
-
-        tween(smokeOpacity)
-            .to(0.65, { opacity: 0 })
-            .start();
-    }
-
-    private fadeOutBurningLayer(layerNode: Node | null): void {
-        if (!layerNode || !layerNode.isValid) {
-            return;
-        }
-
-        const opacity = layerNode.getComponent(UIOpacity) ?? layerNode.addComponent(UIOpacity);
-        Tween.stopAllByTarget(opacity);
-        tween(opacity)
-            .to(0.18, { opacity: 0 })
-            .call(() => {
-                if (layerNode === this.burningFlameNode) {
-                    this.burningFlameGraphics?.clear();
-                    this.burningFlameNode = null;
-                    this.burningFlameGraphics = null;
-                }
-
-                if (layerNode === this.burningSmokeNode) {
-                    this.burningSmokeNode = null;
-                }
-
-                if (layerNode.isValid) {
-                    layerNode.destroy();
-                }
-            })
-            .start();
-    }
-
-    private clearBeamScorch(): void {
-        if (!this.beamScorchNode || !this.beamScorchNode.isValid) {
-            this.beamScorchNode = null;
-            this.beamScorchGraphics = null;
-            return;
-        }
-
-        this.beamScorchGraphics?.clear();
-        this.beamScorchNode.destroy();
-        this.beamScorchNode = null;
-        this.beamScorchGraphics = null;
+        this.sprite.node.setScale(this.hitFlashState.flashScale, this.hitFlashState.flashScale, 1);
     }
 
     private getPrimaryVisualHeight(): number {
@@ -486,5 +185,9 @@ export class EnemyVisual extends Component {
 
     private clamp01(value: number): number {
         return Math.max(0, Math.min(1, value));
+    }
+
+    private handleBurningSmokeSpawn(): void {
+        this.statusVisualRenderer?.spawnSmokePuff();
     }
 }
