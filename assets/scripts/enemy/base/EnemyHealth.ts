@@ -1,6 +1,7 @@
 import { _decorator, Component } from 'cc';
 import { DamageInfo } from '../../combat/DamageInfo';
 import { IDamageable } from '../../core/interfaces/IDamageable';
+import { EnemyVisual } from './EnemyVisual';
 
 const { ccclass, property } = _decorator;
 
@@ -19,8 +20,12 @@ export class EnemyHealth extends Component implements IDamageable {
     public takeDamage(info: DamageInfo) {
         if (this._hp <= 0) return;
 
+        const previousHp = this._hp;
         this._hp = Math.max(0, this._hp - info.amount);
         console.log(`Enemy take damage: ${info.amount}, source: ${info.sourceWeaponId}, HP: ${this._hp}/${this.maxHp}`);
+
+        const enemyVisual = this.node.getComponentInChildren(EnemyVisual);
+        enemyVisual?.playDamageFeedback(previousHp, this._hp, this.maxHp);
 
         if (this._hp <= 0) {
             this.die();

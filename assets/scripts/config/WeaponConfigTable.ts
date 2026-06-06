@@ -41,6 +41,9 @@ export interface WeaponChainConfig {
     segmentDurationSeconds?: number;
     initialHitRadius?: number;
     bounceDamageScale?: number;
+    hitDelaySeconds?: number;
+    lateralAmplitudeScale?: number;
+    keepPreviousSegmentsVisible?: boolean;
 }
 
 export interface WeaponConfigData {
@@ -161,10 +164,13 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         cooldown: 1,
         chain: {
             maxTargets: 5,
-            chainRange: 240,
-            segmentDurationSeconds: 0.08,
+            chainRange: 340,
+            segmentDurationSeconds: 0.38,
             initialHitRadius: 48,
             bounceDamageScale: 1,
+            hitDelaySeconds: 0.02,
+            lateralAmplitudeScale: 0.5,
+            keepPreviousSegmentsVisible: true,
         },
     },
 };

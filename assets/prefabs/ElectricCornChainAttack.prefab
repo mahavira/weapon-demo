@@ -100,10 +100,13 @@
       "__id__": 5
     },
     "maxTargets": 5,
-    "chainRange": 240,
-    "segmentDurationSeconds": 0.08,
+    "chainRange": 340,
+    "segmentDurationSeconds": 0.38,
     "initialHitRadius": 48,
     "bounceDamageScale": 1,
+    "hitDelaySeconds": 0.02,
+    "lateralAmplitudeScale": 0.5,
+    "keepPreviousSegmentsVisible": true,
     "_id": ""
   },
   {

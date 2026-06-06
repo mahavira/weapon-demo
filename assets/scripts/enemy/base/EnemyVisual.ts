@@ -32,14 +32,26 @@ export class EnemyVisual extends Component {
     private burningFlameNode: Node | null = null;
     private burningSmokeNode: Node | null = null;
     private beamScorchNode: Node | null = null;
+    private healthBarRootNode: Node | null = null;
+    private healthBarTrackGraphics: Graphics | null = null;
+    private healthBarDamageLagGraphics: Graphics | null = null;
+    private healthBarFillGraphics: Graphics | null = null;
     private burningFlameGraphics: Graphics | null = null;
     private beamScorchGraphics: Graphics | null = null;
     private isBurningSmokeScheduled = false;
-    private readonly hitFlashState = { mix: 0 };
+    private readonly hitFlashState = { mix: 0, scale: 1 };
     private readonly burningSmokeSpawnTask = () => this.spawnSmokePuff();
     private readonly beamScorchState = {
         innerRadius: 0,
         outerRadius: 0,
+    };
+    private readonly healthBarState = {
+        hpRatio: 1,
+        damageLagRatio: 1,
+    };
+    private readonly healthBarSize = {
+        width: 48,
+        height: 7,
     };
 
     protected onLoad(): void {
@@ -48,7 +60,9 @@ export class EnemyVisual extends Component {
             this.baseColor = this.sprite.color.clone();
         }
 
+        this.ensureHealthBar();
         this.updateSpriteColor();
+        this.redrawHealthBar();
     }
 
     protected update(deltaTime: number): void {
@@ -91,9 +105,31 @@ export class EnemyVisual extends Component {
 
         Tween.stopAllByTarget(this.hitFlashState);
         tween(this.hitFlashState)
-            .set({ mix: 1 })
-            .to(0.08, { mix: 0 }, {
+            .set({ mix: 1, scale: 1.08 })
+            .to(0.04, { mix: 0.55, scale: 1.02 }, {
                 onUpdate: () => this.updateSpriteColor(),
+            })
+            .to(0.08, { mix: 0, scale: 1 }, {
+                onUpdate: () => this.updateSpriteColor(),
+            })
+            .start();
+    }
+
+    public playDamageFeedback(previousHp: number, currentHp: number, maxHp: number): void {
+        this.ensureHealthBar();
+
+        const safeMaxHp = Math.max(1, maxHp);
+        const hpRatio = this.clamp01(currentHp / safeMaxHp);
+        const previousHpRatio = this.clamp01(previousHp / safeMaxHp);
+        this.healthBarState.hpRatio = hpRatio;
+        this.healthBarState.damageLagRatio = Math.max(this.healthBarState.damageLagRatio, previousHpRatio);
+        this.redrawHealthBar();
+
+        Tween.stopAllByTarget(this.healthBarState);
+        tween(this.healthBarState)
+            .delay(0.04)
+            .to(0.32, { damageLagRatio: hpRatio }, {
+                onUpdate: () => this.redrawHealthBar(),
             })
             .start();
     }
@@ -165,6 +201,7 @@ export class EnemyVisual extends Component {
         Tween.stopAllByTarget(this.node);
         Tween.stopAllByTarget(this.hitFlashState);
         Tween.stopAllByTarget(this.beamScorchState);
+        Tween.stopAllByTarget(this.healthBarState);
         this.unschedule(this.burningSmokeSpawnTask);
         this.isBurningSmokeScheduled = false;
     }
@@ -180,6 +217,7 @@ export class EnemyVisual extends Component {
         const burnColor = this.mixColor(this.baseColor, this.burningTargetColor, this.clamp01(this.burningIntensity * pulseFactor));
         const finalColor = this.mixColor(burnColor, this.hitFlashColor, this.clamp01(this.hitFlashState.mix));
         this.sprite.color = finalColor;
+        this.sprite.node.setScale(this.hitFlashState.scale, this.hitFlashState.scale, 1);
     }
 
     private ensureBurningLayerNodes(): void {
@@ -224,6 +262,61 @@ export class EnemyVisual extends Component {
         const scorchOpacity = this.beamScorchNode.getComponent(UIOpacity) ?? this.beamScorchNode.addComponent(UIOpacity);
         Tween.stopAllByTarget(scorchOpacity);
         scorchOpacity.opacity = 180;
+    }
+
+    private ensureHealthBar(): void {
+        if (this.healthBarRootNode && this.healthBarRootNode.isValid) {
+            return;
+        }
+
+        this.healthBarRootNode = new Node('HealthBarLayer');
+        const transform = this.healthBarRootNode.addComponent(UITransform);
+        transform.setContentSize(this.healthBarSize.width, 16);
+        this.healthBarRootNode.setPosition(0, this.getPrimaryVisualHeight() * 0.62 + 16, 0);
+
+        const trackNode = new Node('HealthBarTrackLayer');
+        const damageLagNode = new Node('HealthBarDamageLagLayer');
+        const fillNode = new Node('HealthBarFillLayer');
+
+        for (const barNode of [trackNode, damageLagNode, fillNode]) {
+            this.healthBarRootNode.addChild(barNode);
+            const barTransform = barNode.addComponent(UITransform);
+            barTransform.setContentSize(this.healthBarSize.width, this.healthBarSize.height);
+        }
+
+        this.healthBarTrackGraphics = trackNode.addComponent(Graphics);
+        this.healthBarDamageLagGraphics = damageLagNode.addComponent(Graphics);
+        this.healthBarFillGraphics = fillNode.addComponent(Graphics);
+        this.node.addChild(this.healthBarRootNode);
+    }
+
+    private redrawHealthBar(): void {
+        this.ensureHealthBar();
+        if (!this.healthBarTrackGraphics || !this.healthBarDamageLagGraphics || !this.healthBarFillGraphics) {
+            return;
+        }
+
+        const width = this.healthBarSize.width;
+        const height = this.healthBarSize.height;
+        const left = -width * 0.5;
+        const top = -height * 0.5;
+        const hpWidth = width * this.healthBarState.hpRatio;
+        const damageLagWidth = width * this.healthBarState.damageLagRatio;
+
+        this.healthBarTrackGraphics.clear();
+        this.healthBarTrackGraphics.fillColor = new Color(14, 20, 28, 220);
+        this.healthBarTrackGraphics.roundRect(left, top, width, height, 3);
+        this.healthBarTrackGraphics.fill();
+
+        this.healthBarDamageLagGraphics.clear();
+        this.healthBarDamageLagGraphics.fillColor = new Color(255, 255, 255, 220);
+        this.healthBarDamageLagGraphics.roundRect(left, top, damageLagWidth, height, 3);
+        this.healthBarDamageLagGraphics.fill();
+
+        this.healthBarFillGraphics.clear();
+        this.healthBarFillGraphics.fillColor = new Color(92, 235, 120, 255);
+        this.healthBarFillGraphics.roundRect(left, top, hpWidth, height, 3);
+        this.healthBarFillGraphics.fill();
     }
 
     private redrawBeamScorchLayer(): void {
