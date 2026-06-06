@@ -28,7 +28,7 @@ export class PrefabRegistry extends Component {
         let isValid = true;
 
         for (const weaponId in WeaponConfigTable) {
-            const prefabKey = WeaponConfigTable[weaponId].projectilePrefabKey;
+            const prefabKey = WeaponConfigTable[weaponId].weaponPrefabKey;
             const prefab = this.prefabByKey.get(prefabKey);
 
             if (!prefab) {
@@ -58,7 +58,7 @@ export class PrefabRegistry extends Component {
         }
 
         const prefabKeys = [...new Set(
-            Object.values(WeaponConfigTable).map((config) => config.projectilePrefabKey)
+            Object.values(WeaponConfigTable).map((config) => config.weaponPrefabKey)
         )];
 
         if (prefabKeys.length === 0) {

@@ -36,12 +36,12 @@
 
 | 推荐术语 | 含义 | 当前对应代码 | 避免使用 |
 |---|---|---|---|
-| `Projectile` | 泛指会飞行的攻击实体 | `LinearProjectile`, `ChiliBombProjectile` | 一律叫 `Bullet` |
+| `Projectile` | 泛指会飞行的攻击实体 | `LinearProjectile`, `BlastBombProjectile` | 一律叫 `Bullet` |
 | `LinearProjectile` | 线性飞行投射物基类 | `assets/scripts/attacks/projectile/LinearProjectile.ts` | 混入具体武器语义 |
 | `DirectHitProjectile` | 首次命中即结算并结束的通用投射物 | `assets/scripts/attacks/projectile/DirectHitProjectile.ts` | `CommonBulletProjectile` |
 | `BoomerangProjectile` | 来回飞行、前后段可重复结算的投射物 | `assets/scripts/attacks/projectile/BoomerangProjectile.ts` | `BananaProjectile` 这类武器耦合名 |
-| `landingWorldPos` | 抛物投射物最终落点 | `ChiliBombProjectile.landingWorldPos` | `endWorldPos` |
-| `impactAoeRadius` | 爆炸或范围命中的作用半径 | `ChiliBombProjectile.impactAoeRadius` | `aoe`, `radius` |
+| `landingWorldPos` | 抛物投射物最终落点 | `BlastBombProjectile.landingWorldPos` | `endWorldPos` |
+| `impactAoeRadius` | 爆炸或范围命中的作用半径 | `BlastBombProjectile.impactAoeRadius` | `aoe`, `radius` |
 | `ProjectileDestinationReceiver` | 支持注入投射终点的能力契约 | `ProjectileAttackContract.ts` | 靠 `typeof xxx === 'function'` 猜能力 |
 | `AreaImpactRadiusReceiver` | 支持注入范围伤害半径的能力契约 | `ProjectileAttackContract.ts` | 隐式方法能力 |
 
@@ -88,13 +88,20 @@
 |---|---|---|---|
 | `WeaponConfigTable` | 武器配置表 | `assets/scripts/config/WeaponConfigTable.ts` | 当前为 TS 常量表 |
 | `WeaponConfigData` | 单把武器配置结构 | `WeaponConfigTable.ts` | 配置数据模型 |
+| `weaponId` | 武器主业务标识 | `WeaponConfigData.id` | 用“效果 + 表现形式”，不用外观物化名 |
 | `WeaponAttackType.Boomerang` | 回旋镖类攻击 | `WeaponConfigTable.ts` | 飞出去再返回 |
 | `WeaponAttackType.Projectile` | 泛投射物类攻击 | `WeaponConfigTable.ts` | 包括直线弹、抛物弹等 |
-| `projectilePrefabKey` | 投射物 prefab 注册键 | `WeaponConfigData.projectilePrefabKey` | 不是 uuid |
+| `weaponPrefabKey` | 武器 prefab 注册键 | `WeaponConfigData.weaponPrefabKey` | 用主业务语义，不是 uuid |
 | `boomerang` | 回旋镖专属配置组 | `WeaponConfigData.boomerang` | 如 `forwardDistance` |
 | `volley` | 多发编排配置组 | `WeaponConfigData.volley` | 发几发、间隔多少 |
 | `flight` | 飞行配置组 | `WeaponConfigData.flight` | 飞多远、是否落到目标点 |
 | `impact` | 命中/爆炸配置组 | `WeaponConfigData.impact` | 范围半径等 |
+
+### 武器主命名规则
+
+- `weaponId` 与 `weaponPrefabKey` 统一使用“效果 + 表现形式”。
+- 外观、题材、食物名只允许留在显示文案或素材层，不作为武器主业务概念。
+- 同一效果系如果玩法不同，必须补足表现形式区分，例如 `chain_lightning` 与 `piercing_beam`。
 
 ### 配置字段细化
 

@@ -18,7 +18,7 @@ test('status forwarding ignores targets without an enemy status controller', () 
                 durationSeconds: 3,
                 tickIntervalSeconds: 0.5,
                 tickDamageRatio: 0.3,
-                sourceWeaponId: 'chili_bomb',
+                sourceWeaponId: 'blast_bomb',
             }),
         ]);
     });

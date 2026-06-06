@@ -1012,7 +1012,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "currentWeaponId": "banana_boomerang",
+    "currentWeaponId": "arc_boomerang",
     "owner": null,
     "weaponPoint": {
       "__id__": 30
@@ -1389,7 +1389,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -339.738,
+      "y": -200,
       "z": 0
     },
     "_lrot": {
@@ -1417,7 +1417,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "FireBoomerangButton",
+    "_name": "FireArcBoomerang",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -1746,12 +1746,12 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "banana_boomerang",
+    "weaponId": "arc_boomerang",
     "_id": "7ca2DXQwlCk611sCTMwN0c"
   },
   {
     "__type__": "cc.Node",
-    "_name": "FireStrawberryButton",
+    "_name": "FireSpreadBullet",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -2080,12 +2080,12 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "strawberry_gun",
+    "weaponId": "spread_bullet",
     "_id": "c5NeRioPVA1In11YeZZYlH"
   },
   {
     "__type__": "cc.Node",
-    "_name": "FireSugarcaneButton",
+    "_name": "FireRapidBullet",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -2414,12 +2414,12 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "sugarcane_machine_gun",
+    "weaponId": "rapid_bullet",
     "_id": "1dkqGu5lJJXYTJ7JBNqFmS"
   },
   {
     "__type__": "cc.Node",
-    "_name": "FireChiliBombButton",
+    "_name": "FireBlastBomb",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -2748,12 +2748,12 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "chili_bomb",
+    "weaponId": "blast_bomb",
     "_id": "2baCJwQ/ZPcb10o0KVo0p/"
   },
   {
     "__type__": "cc.Node",
-    "_name": "FireSunflowerBeamButton",
+    "_name": "FirePiercingBeam",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3082,12 +3082,12 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "sunflower_spotlight_mirror",
+    "weaponId": "piercing_beam",
     "_id": "22hiP7wfBPPpSMiFvEK+qy"
   },
   {
     "__type__": "cc.Node",
-    "_name": "FireElectricCornButton",
+    "_name": "FireChainLightning",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3416,12 +3416,12 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "electric_corn",
+    "weaponId": "chain_lightning",
     "_id": "b6iCOKTNhHcIQwdSXaUr+Z"
   },
   {
     "__type__": "cc.Node",
-    "_name": "AcornRicochet",
+    "_name": "FireRicochetBullet",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -3750,7 +3750,7 @@
     "weaponSystem": {
       "__id__": 29
     },
-    "weaponId": "acorn_slingshot",
+    "weaponId": "ricochet_bullet",
     "_id": "2cSPd3kn1AH7Fmz9BbaPA4"
   },
   {

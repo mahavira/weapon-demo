@@ -10,7 +10,7 @@ function createBurningStatusApplyInfo(): StatusApplyInfo {
         durationSeconds: 3,
         tickIntervalSeconds: 0.5,
         tickDamageRatio: 0.3,
-        sourceWeaponId: 'chili_bomb',
+        sourceWeaponId: 'blast_bomb',
     });
 }
 
@@ -48,7 +48,7 @@ test('burning tick preserves source weapon id and dot damage amount', () => {
     const advanceResult = runtime.advance(0.5);
     assert.equal(advanceResult.tickResults.length, 1);
     assert.equal(advanceResult.tickResults[0].damageAmount, 2.4);
-    assert.equal(advanceResult.tickResults[0].sourceWeaponId, 'chili_bomb');
+    assert.equal(advanceResult.tickResults[0].sourceWeaponId, 'blast_bomb');
 });
 
 test('clearing burning stops future ticks, matching enemy destruction cleanup', () => {

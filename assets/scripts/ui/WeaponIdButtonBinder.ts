@@ -7,8 +7,8 @@ const { ccclass, property } = _decorator;
  * One button fires one weapon.
  *
  * Usage:
- * - FireBoomerangButton.weaponId = 'banana_boomerang'
- * - FireStrawberryButton.weaponId = 'strawberry_gun'
+ * - FireBoomerangButton.weaponId = 'arc_boomerang'
+ * - FireSpreadButton.weaponId = 'spread_bullet'
  *
  * This does not change WeaponSystem.currentWeaponId. It directly calls fireWeapon(weaponId).
  */
@@ -21,7 +21,7 @@ export class WeaponIdButtonBinder extends Component {
     weaponSystem: WeaponSystem | null = null;
 
     @property
-    weaponId: string = 'banana_boomerang';
+    weaponId: string = 'arc_boomerang';
 
     start(): void {
         if (!this.button) {

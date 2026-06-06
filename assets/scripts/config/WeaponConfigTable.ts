@@ -57,7 +57,7 @@ export interface WeaponConfigData {
     id: string;
     name: string;
     attackType: WeaponAttackType;
-    projectilePrefabKey: string;
+    weaponPrefabKey: string;
     damage: number;
     cooldown?: number;
 
@@ -75,11 +75,11 @@ export interface WeaponConfigData {
  * Later you can replace this with JSON/Excel import without changing WeaponSystem's public API.
  */
 export const WeaponConfigTable: Record<string, WeaponConfigData> = {
-    banana_boomerang: {
-        id: 'banana_boomerang',
-        name: '香蕉回旋镖',
+    arc_boomerang: {
+        id: 'arc_boomerang',
+        name: '弧回旋镖',
         attackType: WeaponAttackType.Boomerang,
-        projectilePrefabKey: 'banana_boomerang_projectile',
+        weaponPrefabKey: 'arc_boomerang',
         damage: 10,
         cooldown: 0.2,
         boomerang: {
@@ -88,11 +88,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
     },
 
-    strawberry_gun: {
-        id: 'strawberry_gun',
-        name: '草莓枪',
+    spread_bullet: {
+        id: 'spread_bullet',
+        name: '散射弹',
         attackType: WeaponAttackType.Projectile,
-        projectilePrefabKey: 'strawberry_bullet_projectile',
+        weaponPrefabKey: 'spread_bullet',
         damage: 2,
         cooldown: 0.2,
         volley: {
@@ -106,11 +106,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
     },
 
-    chili_bomb: {
-        id: 'chili_bomb',
-        name: '辣椒炸弹',
+    blast_bomb: {
+        id: 'blast_bomb',
+        name: '爆裂炸弹',
         attackType: WeaponAttackType.Projectile,
-        projectilePrefabKey: 'chili_bomb_projectile',
+        weaponPrefabKey: 'blast_bomb',
         damage: 16,
         cooldown: 0.2,
         volley: {
@@ -129,11 +129,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
     },
 
-    sugarcane_machine_gun: {
-        id: 'sugarcane_machine_gun',
-        name: '甘蔗机枪',
+    rapid_bullet: {
+        id: 'rapid_bullet',
+        name: '速射弹',
         attackType: WeaponAttackType.Projectile,
-        projectilePrefabKey: 'sugarcane_bullet_projectile',
+        weaponPrefabKey: 'rapid_bullet',
         damage: 3,
         cooldown: 0.2,
         volley: {
@@ -147,11 +147,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
     },
 
-    sunflower_spotlight_mirror: {
-        id: 'sunflower_spotlight_mirror',
-        name: '向日葵聚光镜',
+    piercing_beam: {
+        id: 'piercing_beam',
+        name: '穿透光束',
         attackType: WeaponAttackType.Beam,
-        projectilePrefabKey: 'sunflower_spotlight_mirror_beam',
+        weaponPrefabKey: 'piercing_beam',
         damage: 48,
         cooldown: 2,
         beam: {
@@ -163,11 +163,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
     },
 
-    electric_corn: {
-        id: 'electric_corn',
-        name: '电击玉米',
+    chain_lightning: {
+        id: 'chain_lightning',
+        name: '连锁闪电',
         attackType: WeaponAttackType.Chain,
-        projectilePrefabKey: 'electric_corn_chain_attack',
+        weaponPrefabKey: 'chain_lightning',
         damage: 8,
         cooldown: 1,
         chain: {
@@ -182,11 +182,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
     },
 
-    acorn_slingshot: {
-        id: 'acorn_slingshot',
-        name: '橡果弹弓',
+    ricochet_bullet: {
+        id: 'ricochet_bullet',
+        name: '弹射弹',
         attackType: WeaponAttackType.Ricochet,
-        projectilePrefabKey: 'acorn_slingshot_projectile',
+        weaponPrefabKey: 'ricochet_bullet',
         damage: 7,
         cooldown: 0.8,
         ricochet: {

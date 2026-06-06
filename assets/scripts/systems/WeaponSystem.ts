@@ -7,8 +7,8 @@ import { AttackContext } from '../attacks/base/AttackContext';
 import { isBeamRuntimeConfigReceiver } from '../attacks/BeamAttackContract';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
-import { ElectricCornChainAttack } from '../attacks/ElectricCornChainAttack';
-import { AcornSlingshotProjectile } from '../attacks/projectile/AcornSlingshotProjectile';
+import { ChainLightningAttack } from '../attacks/ChainLightningAttack';
+import { RicochetBulletProjectile } from '../attacks/projectile/RicochetBulletProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
 
@@ -31,7 +31,7 @@ type ProjectileShotPlan = {
 @ccclass('WeaponSystem')
 export class WeaponSystem extends Component {
     @property
-    currentWeaponId: string = 'banana_boomerang';
+    currentWeaponId: string = 'arc_boomerang';
 
     @property(Node)
     owner: Node | null = null;
@@ -206,7 +206,7 @@ export class WeaponSystem extends Component {
 
         const { node, attack } = spawnedAttack;
         if (!isBeamRuntimeConfigReceiver(attack)) {
-            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support beam runtime config`);
+            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} attack does not support beam runtime config`);
             node.destroy();
             return false;
         }
@@ -239,9 +239,9 @@ export class WeaponSystem extends Component {
         }
 
         const { node, attack } = spawnedAttack;
-        const chainAttack = node.getComponent(ElectricCornChainAttack);
+        const chainAttack = node.getComponent(ChainLightningAttack);
         if (!chainAttack) {
-            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} is missing ElectricCornChainAttack`);
+            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} is missing ChainLightningAttack`);
             node.destroy();
             return false;
         }
@@ -274,9 +274,9 @@ export class WeaponSystem extends Component {
         }
 
         const { node, attack } = spawnedAttack;
-        const ricochetAttack = node.getComponent(AcornSlingshotProjectile);
+        const ricochetAttack = node.getComponent(RicochetBulletProjectile);
         if (!ricochetAttack) {
-            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} is missing AcornSlingshotProjectile`);
+            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} is missing RicochetBulletProjectile`);
             node.destroy();
             return false;
         }
@@ -359,7 +359,7 @@ export class WeaponSystem extends Component {
 
         const { node, attack } = spawnedAttack;
         if (!isProjectileDestinationReceiver(attack)) {
-            console.error(`[WeaponSystem] Prefab ${config.projectilePrefabKey} attack does not support setDestinationWorldPos`);
+            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} attack does not support setDestinationWorldPos`);
             node.destroy();
             return null;
         }
@@ -378,7 +378,7 @@ export class WeaponSystem extends Component {
             return null;
         }
 
-        const prefab = this.prefabRegistry.getPrefabByKey(config.projectilePrefabKey);
+        const prefab = this.prefabRegistry.getPrefabByKey(config.weaponPrefabKey);
         if (!prefab) {
             return null;
         }
@@ -388,7 +388,7 @@ export class WeaponSystem extends Component {
         this.applyProjectileVisualOverrides(node, config);
         this.attachAttackComponentIfNeeded(node, config);
 
-        const attack = this.getAttackComponent(node, config.projectilePrefabKey);
+        const attack = this.getAttackComponent(node, config.weaponPrefabKey);
         if (!attack) {
             node.destroy();
             return null;
@@ -405,14 +405,14 @@ export class WeaponSystem extends Component {
         }
 
         if (config.attackType === WeaponAttackType.Chain) {
-            if (!node.getComponent(ElectricCornChainAttack)) {
-                node.addComponent(ElectricCornChainAttack);
+            if (!node.getComponent(ChainLightningAttack)) {
+                node.addComponent(ChainLightningAttack);
             }
             return;
         }
 
-        if (!node.getComponent(AcornSlingshotProjectile)) {
-            node.addComponent(AcornSlingshotProjectile);
+        if (!node.getComponent(RicochetBulletProjectile)) {
+            node.addComponent(RicochetBulletProjectile);
         }
     }
 
