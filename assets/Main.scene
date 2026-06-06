@@ -1469,7 +1469,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": -210,
-      "y": 0,
+      "y": 30,
       "z": 0
     },
     "_lrot": {
@@ -1498,7 +1498,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Label",
-    "_objFlags": 512,
+    "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 42
@@ -1802,8 +1802,8 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -90,
-      "y": 0,
+      "x": -100,
+      "y": 30,
       "z": 0
     },
     "_lrot": {
@@ -1832,7 +1832,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Label",
-    "_objFlags": 512,
+    "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 50
@@ -2136,8 +2136,8 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 30,
-      "y": 0,
+      "x": 10,
+      "y": 30,
       "z": 0
     },
     "_lrot": {
@@ -2166,7 +2166,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Label",
-    "_objFlags": 512,
+    "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 58
@@ -2470,8 +2470,8 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 150,
-      "y": 0,
+      "x": 120,
+      "y": 30,
       "z": 0
     },
     "_lrot": {
@@ -2500,7 +2500,7 @@
   {
     "__type__": "cc.Node",
     "_name": "Label",
-    "_objFlags": 512,
+    "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 66
@@ -2804,8 +2804,8 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 270,
-      "y": 0,
+      "x": -210,
+      "y": -20,
       "z": 0
     },
     "_lrot": {
@@ -2916,9 +2916,9 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 0,
+      "g": 0,
+      "b": 0,
       "a": 255
     },
     "_string": "激光",
@@ -3140,7 +3140,7 @@
     "_enabled": true,
     "__prefab": null,
     "_resizeMode": 0,
-    "_layoutType": 1,
+    "_layoutType": 3,
     "_cellSize": {
       "__type__": "cc.Size",
       "width": 40,
@@ -3151,8 +3151,8 @@
     "_paddingRight": 0,
     "_paddingTop": 0,
     "_paddingBottom": 0,
-    "_spacingX": 20,
-    "_spacingY": 0,
+    "_spacingX": 10,
+    "_spacingY": 10,
     "_verticalDirection": 1,
     "_horizontalDirection": 0,
     "_constraint": 0,
