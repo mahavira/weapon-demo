@@ -18,6 +18,7 @@ const { ccclass, property } = _decorator;
 
 @ccclass('AcornSlingshotProjectile')
 export class AcornSlingshotProjectile extends AttackBase {
+    private static readonly DEFAULT_HEAD_UP_ANGLE_OFFSET = 90;
     private static readonly VISUAL_FRAME_WIDTH = 65;
     private static readonly VISUAL_FRAME_HEIGHT = 182;
     private static readonly VISUAL_FRAME_COUNT = 8;
@@ -64,11 +65,7 @@ export class AcornSlingshotProjectile extends AttackBase {
         this.attackContext = attackContext;
         this.isAttackActive = true;
         this.visitedTargets.clear();
-        this.previousTargetNode = null;
-        this.currentTargetNode = initialTargetNode;
-        this.hitCount = 0;
-        this.frameElapsedSeconds = 0;
-        this.currentFrameIndex = 0;
+        this.resetRicochetState(initialTargetNode);
 
         this.node.setWorldPosition(attackContext.spawnWorldPos);
         this.node.active = true;
@@ -95,9 +92,7 @@ export class AcornSlingshotProjectile extends AttackBase {
         }
 
         this.frameElapsedSeconds += dt;
-        const nextFrameIndex = Math.floor(
-            this.frameElapsedSeconds / AcornSlingshotProjectile.VISUAL_FRAME_DURATION
-        ) % AcornSlingshotProjectile.VISUAL_FRAME_COUNT;
+        const nextFrameIndex = this.getLoopedVisualFrameIndex();
 
         if (nextFrameIndex !== this.currentFrameIndex) {
             this.applyVisualFrame(nextFrameIndex);
@@ -222,7 +217,8 @@ export class AcornSlingshotProjectile extends AttackBase {
         const currentWorldPos = this.node.worldPosition;
         const dx = destinationWorldPos.x - currentWorldPos.x;
         const dy = destinationWorldPos.y - currentWorldPos.y;
-        this.node.angle = Math.atan2(dy, dx) * 180 / Math.PI - 90;
+        this.node.angle = Math.atan2(dy, dx) * 180 / Math.PI
+            - AcornSlingshotProjectile.DEFAULT_HEAD_UP_ANGLE_OFFSET;
     }
 
     private initializeVisualAnimation(): void {
@@ -234,24 +230,7 @@ export class AcornSlingshotProjectile extends AttackBase {
 
         this.visualSpriteFrames = Array.from(
             { length: AcornSlingshotProjectile.VISUAL_FRAME_COUNT },
-            (_unused, frameIndex) => {
-                const spriteFrame = new SpriteFrame();
-                spriteFrame.reset({
-                    texture: sourceTexture,
-                    rect: new Rect(
-                        frameIndex * AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
-                        0,
-                        AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
-                        AcornSlingshotProjectile.VISUAL_FRAME_HEIGHT
-                    ),
-                    originalSize: new Size(
-                        AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
-                        AcornSlingshotProjectile.VISUAL_FRAME_HEIGHT
-                    ),
-                    offset: new Vec2(0, 0),
-                }, true);
-                return spriteFrame;
-            }
+            (_unused, frameIndex) => this.buildVisualSpriteFrame(sourceTexture, frameIndex)
         );
 
         this.visualSprite.spriteFrame = this.visualSpriteFrames[0] ?? null;
@@ -265,6 +244,47 @@ export class AcornSlingshotProjectile extends AttackBase {
 
         this.currentFrameIndex = frameIndex;
         this.visualSprite.spriteFrame = nextSpriteFrame;
+    }
+
+    private buildVisualSpriteFrame(texture: SpriteFrame['texture'], frameIndex: number): SpriteFrame {
+        const spriteFrame = new SpriteFrame();
+        spriteFrame.reset({
+            texture,
+            rect: this.buildVisualFrameRect(frameIndex),
+            originalSize: this.buildVisualFrameSize(),
+            offset: new Vec2(0, 0),
+        }, true);
+        return spriteFrame;
+    }
+
+    private buildVisualFrameRect(frameIndex: number): Rect {
+        return new Rect(
+            frameIndex * AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
+            0,
+            AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
+            AcornSlingshotProjectile.VISUAL_FRAME_HEIGHT
+        );
+    }
+
+    private buildVisualFrameSize(): Size {
+        return new Size(
+            AcornSlingshotProjectile.VISUAL_FRAME_WIDTH,
+            AcornSlingshotProjectile.VISUAL_FRAME_HEIGHT
+        );
+    }
+
+    private getLoopedVisualFrameIndex(): number {
+        return Math.floor(
+            this.frameElapsedSeconds / AcornSlingshotProjectile.VISUAL_FRAME_DURATION
+        ) % AcornSlingshotProjectile.VISUAL_FRAME_COUNT;
+    }
+
+    private resetRicochetState(initialTargetNode: Node): void {
+        this.previousTargetNode = null;
+        this.currentTargetNode = initialTargetNode;
+        this.hitCount = 0;
+        this.frameElapsedSeconds = 0;
+        this.currentFrameIndex = 0;
     }
 
     private getTargetWorldCenter(targetNode: Node): Vec3 {
