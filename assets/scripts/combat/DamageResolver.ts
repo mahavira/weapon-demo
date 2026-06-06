@@ -12,7 +12,6 @@ export class DamageResolver {
         enemyHealth.takeDamage(hitInfo.attackDamage);
 
         const enemyVisual = hitInfo.targetNode.getComponentInChildren(EnemyVisual);
-        enemyVisual?.playHitShake();
         enemyVisual?.playHitFlash();
 
         forwardStatusApplyList(hitInfo.targetNode, hitInfo.statusApplyList, EnemyStatusController);
