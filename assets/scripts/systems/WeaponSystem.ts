@@ -26,7 +26,7 @@ type ProjectileShotPlan = {
  * Button/UI should call WeaponSystem.fireCurrentWeapon() instead of binding to a specific weapon script.
  * Adding a weapon that reuses an existing attack type should only require:
  * 1. new config in WeaponConfigTable
- * 2. prefab registration in PrefabRegistry
+ * 2. prefab asset under resources/prefabs/weapons
  */
 @ccclass('WeaponSystem')
 export class WeaponSystem extends Component {
@@ -124,6 +124,11 @@ export class WeaponSystem extends Component {
 
         if (!this.prefabRegistry) {
             console.error('[WeaponSystem] Missing prefabRegistry');
+            return false;
+        }
+
+        if (!this.prefabRegistry.isReady()) {
+            console.warn('[WeaponSystem] PrefabRegistry not ready');
             return false;
         }
 

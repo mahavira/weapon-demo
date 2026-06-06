@@ -1,65 +1,38 @@
-import { _decorator, Component, Prefab } from 'cc';
+import { _decorator, Component, Prefab, resources } from 'cc';
 import { WeaponConfigTable } from '../config/WeaponConfigTable';
+import { buildWeaponPrefabResourcePath, DEFAULT_WEAPON_PREFAB_RESOURCE_DIR } from './PrefabRegistryPath';
 
 const { ccclass, property } = _decorator;
 
 /**
- * Minimal prefab registry.
- * Keep prefabKeys and registeredPrefabs aligned by index in the Inspector.
- *
- * Example:
- * prefabKeys[0] = banana_boomerang_projectile
- * registeredPrefabs[0] = BananaBoomerangProjectile.prefab
+ * Weapon prefab registry that auto-loads prefabs from resources by weapon config key.
  */
 @ccclass('PrefabRegistry')
 export class PrefabRegistry extends Component {
-    @property([String])
-    prefabKeys: string[] = [];
+    @property
+    prefabResourceDir: string = DEFAULT_WEAPON_PREFAB_RESOURCE_DIR;
 
-    @property([Prefab])
-    registeredPrefabs: Prefab[] = [];
+    private readonly prefabByKey = new Map<string, Prefab>();
+    private isLoadCompleted: boolean = false;
+    private isLoading: boolean = false;
 
     protected onLoad(): void {
-        this.validateRegistryEntries();
+        this.preloadConfiguredPrefabs();
+    }
+
+    public isReady(): boolean {
+        return this.isLoadCompleted;
     }
 
     public validateRegistryEntries(): boolean {
         let isValid = true;
 
-        if (this.prefabKeys.length !== this.registeredPrefabs.length) {
-            console.error(`[PrefabRegistry] prefabKeys/registeredPrefabs length mismatch: ${this.prefabKeys.length}/${this.registeredPrefabs.length}`);
-            isValid = false;
-        }
-
-        const seenKeys = new Set<string>();
-
-        for (let i = 0; i < this.prefabKeys.length; i++) {
-            const key = this.prefabKeys[i];
-
-            if (!key) {
-                console.error(`[PrefabRegistry] Empty key at index ${i}`);
-                isValid = false;
-                continue;
-            }
-
-            if (seenKeys.has(key)) {
-                console.error(`[PrefabRegistry] Duplicate prefab key: ${key}`);
-                isValid = false;
-            }
-
-            seenKeys.add(key);
-
-            if (!this.registeredPrefabs[i]) {
-                console.error(`[PrefabRegistry] Empty prefab for key: ${key}`);
-                isValid = false;
-            }
-        }
-
         for (const weaponId in WeaponConfigTable) {
             const prefabKey = WeaponConfigTable[weaponId].projectilePrefabKey;
+            const prefab = this.prefabByKey.get(prefabKey);
 
-            if (!seenKeys.has(prefabKey)) {
-                console.error(`[PrefabRegistry] Weapon ${weaponId} references unregistered prefab key: ${prefabKey}`);
+            if (!prefab) {
+                console.error(`[PrefabRegistry] Weapon ${weaponId} references unloaded prefab key: ${prefabKey}`);
                 isValid = false;
             }
         }
@@ -68,24 +41,56 @@ export class PrefabRegistry extends Component {
     }
 
     public getPrefabByKey(key: string): Prefab | null {
-        const index = this.findPrefabIndexByKey(key);
-
-        if (index < 0) {
-            console.error(`[PrefabRegistry] Missing prefab key: ${key}`);
-            return null;
-        }
-
-        const prefab = this.registeredPrefabs[index];
+        const prefab = this.prefabByKey.get(key);
 
         if (!prefab) {
-            console.error(`[PrefabRegistry] Empty prefab for key: ${key}`);
+            const reason = this.isLoadCompleted ? 'Missing' : 'Not ready';
+            console.error(`[PrefabRegistry] ${reason} prefab key: ${key}`);
             return null;
         }
 
         return prefab;
     }
 
-    private findPrefabIndexByKey(key: string): number {
-        return this.prefabKeys.indexOf(key);
+    private preloadConfiguredPrefabs(): void {
+        if (this.isLoading || this.isLoadCompleted) {
+            return;
+        }
+
+        const prefabKeys = [...new Set(
+            Object.values(WeaponConfigTable).map((config) => config.projectilePrefabKey)
+        )];
+
+        if (prefabKeys.length === 0) {
+            this.isLoadCompleted = true;
+            return;
+        }
+
+        this.isLoading = true;
+        let pendingLoadCount = prefabKeys.length;
+
+        for (const prefabKey of prefabKeys) {
+            resources.load(
+                buildWeaponPrefabResourcePath(prefabKey, this.prefabResourceDir),
+                Prefab,
+                (error, prefab) => {
+                    if (error || !prefab) {
+                        console.error(
+                            `[PrefabRegistry] Failed to load prefab for key ${prefabKey}: ${error?.message ?? 'empty prefab'}`
+                        );
+                    } else if (this.prefabByKey.has(prefabKey)) {
+                        console.error(`[PrefabRegistry] Duplicate loaded prefab key: ${prefabKey}`);
+                    } else {
+                        this.prefabByKey.set(prefabKey, prefab);
+                    }
+
+                    pendingLoadCount -= 1;
+                    if (pendingLoadCount === 0) {
+                        this.isLoading = false;
+                        this.isLoadCompleted = this.validateRegistryEntries();
+                    }
+                }
+            );
+        }
     }
 }

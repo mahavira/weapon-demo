@@ -1172,45 +1172,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "prefabKeys": [
-      "banana_boomerang_projectile",
-      "strawberry_bullet_projectile",
-      "sugarcane_bullet_projectile",
-      "chili_bomb_projectile",
-      "sunflower_spotlight_mirror_beam",
-      "electric_corn_chain_attack",
-      "acorn_slingshot_projectile"
-    ],
-    "registeredPrefabs": [
-      {
-        "__uuid__": "73cee902-388c-48cd-9711-c5b8d9ecb66a",
-        "__expectedType__": "cc.Prefab"
-      },
-      {
-        "__uuid__": "d265b98e-5aea-4756-849d-1daa4765196b",
-        "__expectedType__": "cc.Prefab"
-      },
-      {
-        "__uuid__": "33d7c4a3-803a-458f-a159-fe72cd8e26cd",
-        "__expectedType__": "cc.Prefab"
-      },
-      {
-        "__uuid__": "91d04d4e-cef0-4677-8417-daca3372524a",
-        "__expectedType__": "cc.Prefab"
-      },
-      {
-        "__uuid__": "a11719c3-3eba-4fc9-a898-d656b80d152f",
-        "__expectedType__": "cc.Prefab"
-      },
-      {
-        "__uuid__": "95273eb3-a411-440a-94e3-2209e194b674",
-        "__expectedType__": "cc.Prefab"
-      },
-      {
-        "__uuid__": "d8ec0e1b-b8cf-4f74-b4a7-717f93a7f6e7",
-        "__expectedType__": "cc.Prefab"
-      }
-    ],
+    "prefabResourceDir": "prefabs/weapons",
     "_id": "ffpFLBdnVHgLy6DNolRIOI"
   },
   {
