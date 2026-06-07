@@ -1,7 +1,8 @@
 import { _decorator, Component, Node } from 'cc';
 import { ITargetProvider } from '../core/interfaces/ITargetProvider';
 import { EnemyRegistry } from '../combat/EnemyRegistry';
-import { findNearestTarget, findTargetsWithinRange, TargetSelectionCandidate } from './TargetSelection';
+import { findNearestTarget, findTargetsWithinRange } from './TargetSelection';
+import type { TargetSelectionCandidate } from './TargetSelection';
 
 const { ccclass, property } = _decorator;
 
@@ -30,34 +31,38 @@ export class NearestTargetProvider extends Component implements ITargetProvider 
     }
 
     private buildTargetSelectionCandidates(): TargetSelectionCandidate<Node>[] {
-        return EnemyRegistry.getTargetableTargets()
-            .map((hurtbox) => {
-                const targetNode = hurtbox.node;
-                if (!targetNode || !targetNode.isValid) {
-                    return null;
-                }
+        const candidates: TargetSelectionCandidate<Node>[] = [];
 
-                return {
-                    target: targetNode,
-                    worldPos: targetNode.worldPosition,
-                };
-            })
-            .filter((candidate): candidate is TargetSelectionCandidate<Node> => candidate !== null);
+        for (const hurtbox of EnemyRegistry.getTargetableTargets()) {
+            const targetNode = hurtbox.node;
+            if (!targetNode || !targetNode.isValid) {
+                continue;
+            }
+
+            candidates.push({
+                target: targetNode,
+                worldPos: targetNode.worldPosition,
+            });
+        }
+
+        return candidates;
     }
 
     private buildAreaSelectionCandidates(): TargetSelectionCandidate<Node>[] {
-        return EnemyRegistry.getTargetableTargets()
-            .map((hurtbox) => {
-                const targetNode = hurtbox.node;
-                if (!targetNode || !targetNode.isValid) {
-                    return null;
-                }
+        const candidates: TargetSelectionCandidate<Node>[] = [];
 
-                return {
-                    target: targetNode,
-                    worldPos: hurtbox.getWorldCenter(),
-                };
-            })
-            .filter((candidate): candidate is TargetSelectionCandidate<Node> => candidate !== null);
+        for (const hurtbox of EnemyRegistry.getTargetableTargets()) {
+            const targetNode = hurtbox.node;
+            if (!targetNode || !targetNode.isValid) {
+                continue;
+            }
+
+            candidates.push({
+                target: targetNode,
+                worldPos: hurtbox.getWorldCenter(),
+            });
+        }
+
+        return candidates;
     }
 }

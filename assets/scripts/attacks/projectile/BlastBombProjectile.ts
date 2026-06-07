@@ -11,9 +11,10 @@ import { spawnRadialExplosionBurst } from '../../effects/ProceduralExplosionEffe
 import { ArcPath } from '../../movement/paths/ArcPath';
 import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
 import { AreaImpactRadiusReceiver, ProjectileDestinationReceiver } from '../base/ProjectileAttackContract';
-import { StatusApplyInfo } from '../../combat/StatusApplyInfo';
-import { StatusEffectType } from '../../core/types/StatusEffectType';
+import type { StatusApplyInfo } from '../../combat/StatusApplyInfo';
 import { BlastBombRuntimeConfig, buildBlastBombRuntimeConfig } from './BlastBombRuntimeConfig';
+import { WeaponBurningOnImpactConfig } from '../../config/WeaponConfigTable';
+import { buildBlastBombBurningStatusApplyList } from './BlastBombBurningStatus';
 
 const { ccclass, property } = _decorator;
 
@@ -35,6 +36,7 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
     destroyWhenExitVisibleArea: boolean = true;
 
     private impactAoeRadius: number = 0;
+    private burningOnImpactConfig: WeaponBurningOnImpactConfig | null = null;
     private landingWorldPos: Vec3 | null = null;
     private path: ArcPath | null = null;
     private previousWorldPos: Vec3 = new Vec3();
@@ -54,6 +56,16 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
 
     public setAreaImpactRadius(radius: number): void {
         this.impactAoeRadius = Math.max(0, radius);
+    }
+
+    public configureBurningOnImpact(burningOnImpactConfig: WeaponBurningOnImpactConfig | null): void {
+        this.burningOnImpactConfig = burningOnImpactConfig
+            ? {
+                durationSeconds: burningOnImpactConfig.durationSeconds,
+                tickIntervalSeconds: burningOnImpactConfig.tickIntervalSeconds,
+                tickDamageRatio: burningOnImpactConfig.tickDamageRatio,
+            }
+            : null;
     }
 
     public startAttack(context: AttackContext): void {
@@ -160,6 +172,7 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
     private cleanupRuntimeState(): void {
         Tween.stopAllByTarget(this.node);
         this.impactAoeRadius = 0;
+        this.burningOnImpactConfig = null;
         this.landingWorldPos = null;
         this.path = null;
         this.previousWorldPos = new Vec3();
@@ -220,14 +233,9 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
             return [];
         }
 
-        return [
-            new StatusApplyInfo({
-                effectType: StatusEffectType.Burning,
-                durationSeconds: 3,
-                tickIntervalSeconds: 0.5,
-                tickDamageRatio: 0.3,
-                sourceWeaponId: this.attackContext.attackDamage.sourceWeaponId,
-            }),
-        ];
+        return buildBlastBombBurningStatusApplyList(
+            this.burningOnImpactConfig,
+            this.attackContext.attackDamage.sourceWeaponId
+        );
     }
 }

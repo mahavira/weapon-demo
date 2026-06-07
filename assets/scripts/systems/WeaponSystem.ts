@@ -4,34 +4,25 @@ import { PrefabRegistry } from '../registry/PrefabRegistry';
 import { NearestTargetProvider } from '../targeting/NearestTargetProvider';
 import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
-import { isBeamRuntimeConfigReceiver } from '../attacks/BeamAttackContract';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
-import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
-import { ChainLightningAttack } from '../attacks/ChainLightningAttack';
-import { RicochetBulletProjectile } from '../attacks/projectile/RicochetBulletProjectile';
 import { LinearProjectile } from '../attacks/projectile/LinearProjectile';
 import { BlastBombProjectile } from '../attacks/projectile/BlastBombProjectile';
-import { SpreadBulletProjectile } from '../attacks/projectile/SpreadBulletProjectile';
-import { RapidBulletProjectile } from '../attacks/projectile/RapidBulletProjectile';
-import { PiercingBeam } from '../attacks/PiercingBeam';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
 import {
     resolveBlastBombRuntimeConfig,
-    resolveBoomerangRuntimeConfig,
-    resolveChainLightningRuntimeConfig,
     resolveLinearProjectileRuntimeConfig,
-    resolveRicochetRuntimeConfig,
 } from './WeaponAttackRuntimeConfigResolver';
 import { resolveWeaponAttackBinding } from './WeaponAttackBinding';
+import {
+    createWeaponAttackExecutorDeps,
+} from './WeaponAttackExecutor';
+import { buildProjectileShotPlans, ProjectileShotPlan, resolveProjectileDestinationWorldPos } from '../attacks/projectile/ProjectileShotPlanner';
+import { assembleWeaponAttack, getAssembledWeaponAttack } from './WeaponAttackAssembler';
+import { getWeaponAttackExecutor } from './WeaponAttackExecutorRegistry';
+import { fireWeaponWithCooldown } from './WeaponFireCoordinator';
 
 const { ccclass, property } = _decorator;
-
-type ProjectileShotPlan = {
-    delay: number;
-    startOffsetX: number;
-    aimWorldPos: Vec3;
-};
 
 /**
  * One unified weapon entry point.
@@ -70,11 +61,6 @@ export class WeaponSystem extends Component {
 
     private static readonly DEFAULT_PROJECTILE_SHOT_DELAY = 0;
 
-    constructor() {
-        super();
-        console.log('[WeaponSystem] Constructor');
-    }
-
     public setCurrentWeapon(weaponId: string): void {
         if (!WeaponConfigTable[weaponId]) {
             console.error(`[WeaponSystem] Unknown weapon id: ${weaponId}`);
@@ -97,36 +83,24 @@ export class WeaponSystem extends Component {
             return;
         }
 
-        if (!this.canFire(config)) return;
-
-        if (this.fireByConfig(config)) {
-            this.markCooldown(config);
-        }
+        fireWeaponWithCooldown({
+            config,
+            nextFireTimeByWeaponId: this.nextFireTimeByWeaponId,
+            nowSeconds: Date.now() / 1000,
+            fireByConfig: (currentConfig) => this.fireByConfig(currentConfig),
+        });
     }
 
     private fireByConfig(config: WeaponConfigData): boolean {
         if (!this.validateCommonRefs()) return false;
-
-        switch (config.attackType) {
-            case WeaponAttackType.Boomerang:
-                return this.fireBoomerang(config);
-
-            case WeaponAttackType.Projectile:
-                return this.fireProjectileAttack(config);
-
-            case WeaponAttackType.Beam:
-                return this.fireBeamAttack(config);
-
-            case WeaponAttackType.Chain:
-                return this.fireChainAttack(config);
-
-            case WeaponAttackType.Ricochet:
-                return this.fireRicochetAttack(config);
-
-            default:
-                console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
-                return false;
+        const executorDeps = this.createAttackExecutorDeps();
+        const attackExecutor = getWeaponAttackExecutor(config.attackType);
+        if (!attackExecutor) {
+            console.error(`[WeaponSystem] Unsupported attackType: ${config.attackType}`);
+            return false;
         }
+
+        return attackExecutor(config, executorDeps);
     }
 
     private validateCommonRefs(): boolean {
@@ -158,189 +132,21 @@ export class WeaponSystem extends Component {
         return true;
     }
 
-    private fireBoomerang(config: WeaponConfigData): boolean {
-        if (!this.weaponPoint || !this.projectileRoot || !this.prefabRegistry || !this.targetProvider) return false;
-
-        const spawnedAttack = this.createAttackInstance(config);
-        if (!spawnedAttack) {
-            return false;
-        }
-
-        const { node, attack } = spawnedAttack;
-
-        const boomerangAttack = node.getComponent(BoomerangProjectile);
-        if (boomerangAttack) {
-            boomerangAttack.configureBoomerang(resolveBoomerangRuntimeConfig(config));
-        }
-
-        const context = this.buildAttackContext(
-            config,
-            this.weaponPoint.worldPosition.clone(),
-            this.getBoomerangForwardDestinationWorldPos(config),
-            null
-        );
-
-        attack.startAttack(context);
-        return true;
-    }
-
-    private fireProjectileAttack(config: WeaponConfigData): boolean {
-        if (!this.weaponPoint || !this.targetProvider) return false;
-
-        const primaryTarget = this.targetProvider.getPrimaryTarget();
-        if (!primaryTarget) {
-            console.warn('[WeaponSystem] Projectile attack has no target');
-            return false;
-        }
-
-        for (const shot of this.buildProjectileShotPlans(config, primaryTarget.worldPosition.clone())) {
-            this.scheduleOnce(() => {
-                if (!this.weaponPoint || !this.weaponPoint.isValid) return;
-
-                const spawnWorldPos = this.weaponPoint.worldPosition.clone();
-                spawnWorldPos.x += shot.startOffsetX;
-                const destinationWorldPos = this.resolveProjectileDestinationWorldPos(config, spawnWorldPos, shot.aimWorldPos);
-
-                this.spawnProjectileShot(config, spawnWorldPos, destinationWorldPos, primaryTarget);
-            }, shot.delay);
-        }
-
-        return true;
-    }
-
-    private fireBeamAttack(config: WeaponConfigData): boolean {
-        if (!this.weaponPoint || !this.targetProvider) return false;
-
-        const primaryTarget = this.targetProvider.getPrimaryTarget();
-        if (!primaryTarget) {
-            console.warn('[WeaponSystem] Beam attack has no target');
-            return false;
-        }
-
-        const spawnedAttack = this.createAttackInstance(config);
-        if (!spawnedAttack) {
-            return false;
-        }
-
-        const { node, attack } = spawnedAttack;
-        if (!isBeamRuntimeConfigReceiver(attack)) {
-            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} attack does not support beam runtime config`);
-            node.destroy();
-            return false;
-        }
-
-        attack.setBeamConfig(config.beam ?? {});
-
-        const context = this.buildAttackContext(
-            config,
-            this.weaponPoint.worldPosition.clone(),
-            primaryTarget.worldPosition.clone(),
-            primaryTarget
-        );
-
-        attack.startAttack(context);
-        return true;
-    }
-
-    private fireChainAttack(config: WeaponConfigData): boolean {
-        if (!this.weaponPoint || !this.targetProvider) return false;
-
-        const primaryTarget = this.targetProvider.getPrimaryTarget();
-        if (!primaryTarget) {
-            console.warn('[WeaponSystem] Chain attack has no target');
-            return false;
-        }
-
-        const spawnedAttack = this.createAttackInstance(config);
-        if (!spawnedAttack) {
-            return false;
-        }
-
-        const { node, attack } = spawnedAttack;
-        const chainAttack = node.getComponent(ChainLightningAttack);
-        if (!chainAttack) {
-            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} is missing ChainLightningAttack`);
-            node.destroy();
-            return false;
-        }
-
-        chainAttack.configureChain(resolveChainLightningRuntimeConfig(config));
-
-        const context = this.buildAttackContext(
-            config,
-            this.weaponPoint.worldPosition.clone(),
-            primaryTarget.worldPosition.clone(),
-            primaryTarget
-        );
-
-        attack.startAttack(context);
-        return true;
-    }
-
-    private fireRicochetAttack(config: WeaponConfigData): boolean {
-        if (!this.weaponPoint || !this.targetProvider) return false;
-
-        const primaryTarget = this.targetProvider.getPrimaryTarget();
-        if (!primaryTarget) {
-            console.warn('[WeaponSystem] Ricochet attack has no target');
-            return false;
-        }
-
-        const spawnedAttack = this.createAttackInstance(config);
-        if (!spawnedAttack) {
-            return false;
-        }
-
-        const { node, attack } = spawnedAttack;
-        const ricochetAttack = node.getComponent(RicochetBulletProjectile);
-        if (!ricochetAttack) {
-            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} is missing RicochetBulletProjectile`);
-            node.destroy();
-            return false;
-        }
-
-        ricochetAttack.configureRicochet(resolveRicochetRuntimeConfig(config));
-
-        const context = this.buildAttackContext(
-            config,
-            this.weaponPoint.worldPosition.clone(),
-            primaryTarget.worldPosition.clone(),
-            primaryTarget
-        );
-
-        attack.startAttack(context);
-        return true;
-    }
-
     private buildProjectileShotPlans(config: WeaponConfigData, targetWorldPos: Vec3): ProjectileShotPlan[] {
-        const projectileCount = Math.max(1, Math.floor(config.volley?.count ?? WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT));
-        const projectileSpacingX = config.volley?.spacingX ?? WeaponSystem.DEFAULT_PROJECTILE_SPACING_X;
-        const projectileTargetSpreadX = config.volley?.targetSpreadX ?? WeaponSystem.DEFAULT_PROJECTILE_TARGET_SPREAD_X;
-        const projectileShotDelay = config.volley?.shotDelay ?? WeaponSystem.DEFAULT_PROJECTILE_SHOT_DELAY;
-        const centerIndex = (projectileCount - 1) / 2;
-
-        return Array.from({ length: projectileCount }, (_unused, index) => {
-            const offsetIndex = index - centerIndex;
-            const aimWorldPos = targetWorldPos.clone();
-            aimWorldPos.x += offsetIndex * projectileTargetSpreadX;
-
-            return {
-                delay: projectileShotDelay * index,
-                startOffsetX: offsetIndex * projectileSpacingX,
-                aimWorldPos,
-            };
+        return buildProjectileShotPlans(config, targetWorldPos, {
+            projectileVolleyCount: WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT,
+            projectileSpacingX: WeaponSystem.DEFAULT_PROJECTILE_SPACING_X,
+            projectileTargetSpreadX: WeaponSystem.DEFAULT_PROJECTILE_TARGET_SPREAD_X,
+            projectileShotDelay: WeaponSystem.DEFAULT_PROJECTILE_SHOT_DELAY,
         });
     }
 
     private resolveProjectileDestinationWorldPos(config: WeaponConfigData, spawnWorldPos: Vec3, aimWorldPos: Vec3): Vec3 {
-        if (config.flight?.endAtTarget) {
-            return aimWorldPos.clone();
-        }
-
-        return this.buildExtendedProjectileDestinationWorldPos(
+        return resolveProjectileDestinationWorldPos(
+            config,
             spawnWorldPos,
             aimWorldPos,
-            config.flight?.travelDistance ?? WeaponSystem.DEFAULT_PROJECTILE_TRAVEL_DISTANCE
+            WeaponSystem.DEFAULT_PROJECTILE_TRAVEL_DISTANCE
         );
     }
 
@@ -405,10 +211,12 @@ export class WeaponSystem extends Component {
         const node = instantiate(prefab);
         this.projectileRoot.addChild(node);
         this.applyProjectileVisualOverrides(node, config);
-        this.attachAttackComponentIfNeeded(node, config);
+        const attackBinding = resolveWeaponAttackBinding(config.weaponPrefabKey, config.attackType);
+        assembleWeaponAttack(node, attackBinding);
 
-        const attack = this.getAttackComponent(node, config.weaponPrefabKey);
+        const attack = getAssembledWeaponAttack(node, attackBinding);
         if (!attack) {
+            console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} missing AttackBase component`);
             node.destroy();
             return null;
         }
@@ -419,51 +227,12 @@ export class WeaponSystem extends Component {
     private applyProjectileAttackRuntimeConfig(attack: AttackBase, config: WeaponConfigData): void {
         if (attack instanceof BlastBombProjectile) {
             attack.configureBlastBomb(resolveBlastBombRuntimeConfig(config));
+            attack.configureBurningOnImpact(config.burningOnImpact ?? null);
             return;
         }
 
         if (attack instanceof LinearProjectile) {
             attack.configureProjectile(resolveLinearProjectileRuntimeConfig(config));
-        }
-    }
-
-    private attachAttackComponentIfNeeded(node: Node, config: WeaponConfigData): void {
-        switch (resolveWeaponAttackBinding(config.weaponPrefabKey, config.attackType)) {
-            case 'boomerang':
-                if (!node.getComponent(BoomerangProjectile)) {
-                    node.addComponent(BoomerangProjectile);
-                }
-                return;
-            case 'spread':
-                if (!node.getComponent(SpreadBulletProjectile)) {
-                    node.addComponent(SpreadBulletProjectile);
-                }
-                return;
-            case 'blast_bomb':
-                if (!node.getComponent(BlastBombProjectile)) {
-                    node.addComponent(BlastBombProjectile);
-                }
-                return;
-            case 'rapid_bullet':
-                if (!node.getComponent(RapidBulletProjectile)) {
-                    node.addComponent(RapidBulletProjectile);
-                }
-                return;
-            case 'piercing_beam':
-                if (!node.getComponent(PiercingBeam)) {
-                    node.addComponent(PiercingBeam);
-                }
-                return;
-            case 'chain_lightning':
-                if (!node.getComponent(ChainLightningAttack)) {
-                    node.addComponent(ChainLightningAttack);
-                }
-                return;
-            case 'ricochet_bullet':
-                if (!node.getComponent(RicochetBulletProjectile)) {
-                    node.addComponent(RicochetBulletProjectile);
-                }
-                return;
         }
     }
 
@@ -512,61 +281,31 @@ export class WeaponSystem extends Component {
         return destinationWorldPos;
     }
 
-    private buildExtendedProjectileDestinationWorldPos(spawnWorldPos: Vec3, aimWorldPos: Vec3, travelDistance: number): Vec3 {
-        const dx = aimWorldPos.x - spawnWorldPos.x;
-        const dy = aimWorldPos.y - spawnWorldPos.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-
-        if (length <= 0) {
-            return new Vec3(spawnWorldPos.x, spawnWorldPos.y + travelDistance, spawnWorldPos.z);
+    private createAttackExecutorDeps() {
+        if (!this.weaponPoint || !this.targetProvider) {
+            throw new Error('WeaponSystem attack executor requires validated refs');
         }
 
-        return new Vec3(
-            spawnWorldPos.x + dx / length * travelDistance,
-            spawnWorldPos.y + dy / length * travelDistance,
-            spawnWorldPos.z
-        );
-    }
-
-    private canFire(config: WeaponConfigData): boolean {
-        const cooldown = config.cooldown ?? 0;
-        if (cooldown <= 0) return true;
-
-        const now = Date.now() / 1000;
-        const nextFireTime = this.nextFireTimeByWeaponId[config.id] ?? 0;
-
-        if (now < nextFireTime) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private markCooldown(config: WeaponConfigData): void {
-        const cooldown = config.cooldown ?? 0;
-        if (cooldown <= 0) return;
-
-        this.nextFireTimeByWeaponId[config.id] = Date.now() / 1000 + cooldown;
-    }
-
-    private getAttackComponent(node: Node, prefabKey: string): AttackBase | null {
-        const attack = node.getComponents(Component).find((component) => this.isAttackBase(component));
-        if (!attack) {
-            console.error(`[WeaponSystem] Prefab ${prefabKey} missing AttackBase component`);
-            return null;
-        }
-
-        return attack;
-    }
-
-    private isAttackBase(component: Component): component is AttackBase {
-        const candidate = component as {
-            startAttack?: unknown;
-            stopAttack?: unknown;
-        };
-
-        return typeof candidate.startAttack === 'function'
-            && typeof candidate.stopAttack === 'function';
+        return createWeaponAttackExecutorDeps({
+            weaponPointNode: this.weaponPoint,
+            targetProvider: this.targetProvider,
+            createAttackInstance: (config) => this.createAttackInstance(config),
+            buildAttackContext: (config, spawnWorldPos, destinationWorldPos, target) => (
+                this.buildAttackContext(config, spawnWorldPos, destinationWorldPos, target)
+            ),
+            spawnProjectileShot: (config, spawnWorldPos, destinationWorldPos, target) => (
+                this.spawnProjectileShot(config, spawnWorldPos, destinationWorldPos, target)
+            ),
+            scheduleShot: (callback, delaySeconds) => this.scheduleOnce(callback, delaySeconds),
+            getBoomerangForwardDestinationWorldPos: (config) => this.getBoomerangForwardDestinationWorldPos(config),
+            projectileShotDefaults: {
+                projectileVolleyCount: WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT,
+                projectileSpacingX: WeaponSystem.DEFAULT_PROJECTILE_SPACING_X,
+                projectileTargetSpreadX: WeaponSystem.DEFAULT_PROJECTILE_TARGET_SPREAD_X,
+                projectileShotDelay: WeaponSystem.DEFAULT_PROJECTILE_SHOT_DELAY,
+                projectileTravelDistance: WeaponSystem.DEFAULT_PROJECTILE_TRAVEL_DISTANCE,
+            },
+        });
     }
 
     private applyProjectileVisualOverrides(node: Node, config: WeaponConfigData): void {

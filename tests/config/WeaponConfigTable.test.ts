@@ -17,6 +17,9 @@ test('blast bomb is configured as a single exploding projectile', () => {
     assert.equal(config.blastBomb?.rotateSpeed, 18);
     assert.equal(config.blastBomb?.autoFaceDirection, true);
     assert.equal(config.blastBomb?.destroyWhenExitVisibleArea, true);
+    assert.equal(config.burningOnImpact?.durationSeconds, 3);
+    assert.equal(config.burningOnImpact?.tickIntervalSeconds, 0.5);
+    assert.equal(config.burningOnImpact?.tickDamageRatio, 0.3);
 });
 
 test('piercing beam is configured as a beam weapon', () => {
@@ -79,11 +82,11 @@ test('knockback cannon is configured as a single projectile with knockback', () 
     assert.equal(config.knockback?.radius, 80);
     assert.equal(config.knockback?.distance, 40);
     assert.equal(config.knockback?.edgeDistanceScale, 0.35);
-    assert.equal(config.projectile?.travelSpeed, 4000);
+    assert.equal(config.projectile?.travelSpeed, 1000);
     assert.equal(config.projectile?.hitRadius, 42);
     assert.equal(config.projectile?.rotateSpeed, 0);
     assert.equal(config.projectile?.autoFaceDirection, true);
-    assert.equal(config.projectile?.faceAngleOffset, 0);
+    assert.equal(config.projectile?.faceAngleOffset, -90);
     assert.equal(config.projectile?.destroyWhenExitVisibleArea, true);
 });
 
@@ -121,4 +124,6 @@ test('spread and rapid projectile weapons keep their motion config in the table'
     assert.equal(rapidBulletConfig.projectile?.autoFaceDirection, true);
     assert.equal(rapidBulletConfig.projectile?.faceAngleOffset, 0);
     assert.equal(rapidBulletConfig.projectile?.destroyWhenExitVisibleArea, true);
+    assert.equal(rapidBulletConfig.impact, undefined);
+    assert.equal(rapidBulletConfig.knockback, undefined);
 });

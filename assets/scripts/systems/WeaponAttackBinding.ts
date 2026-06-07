@@ -5,13 +5,15 @@ export const WeaponAttackBinding = {
     spread_bullet: 'spread',
     blast_bomb: 'blast_bomb',
     rapid_bullet: 'rapid_bullet',
-    knockback_cannon: 'rapid_bullet',
+    knockback_cannon: 'knockback_cannon',
     piercing_beam: 'piercing_beam',
     chain_lightning: 'chain_lightning',
     ricochet_bullet: 'ricochet_bullet',
 } as const;
 
-export type WeaponAttackBindingKey = typeof WeaponAttackBinding[keyof typeof WeaponAttackBinding];
+export type WeaponAttackBindingKey =
+    | typeof WeaponAttackBinding[keyof typeof WeaponAttackBinding]
+    | 'direct_hit_projectile';
 
 export function resolveWeaponAttackBinding(weaponPrefabKey: string, attackType: WeaponAttackType): WeaponAttackBindingKey {
     const binding = WeaponAttackBinding[weaponPrefabKey as keyof typeof WeaponAttackBinding];
@@ -30,6 +32,6 @@ export function resolveWeaponAttackBinding(weaponPrefabKey: string, attackType: 
             return 'ricochet_bullet';
         case WeaponAttackType.Projectile:
         default:
-            return 'spread';
+            return 'direct_hit_projectile';
     }
 }

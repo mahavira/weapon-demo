@@ -48,6 +48,12 @@ export interface WeaponBlastBombConfig {
     destroyWhenExitVisibleArea?: boolean;
 }
 
+export interface WeaponBurningOnImpactConfig {
+    durationSeconds?: number;
+    tickIntervalSeconds?: number;
+    tickDamageRatio?: number;
+}
+
 export interface WeaponProjectileImpactConfig {
     aoeRadius?: number;
     /** 范围边缘的伤害系数；中心点为 1，向外按距离线性衰减到该值 */
@@ -107,6 +113,7 @@ export interface WeaponConfigData {
     flight?: WeaponProjectileFlightConfig;
     projectile?: WeaponProjectileConfig;
     blastBomb?: WeaponBlastBombConfig;
+    burningOnImpact?: WeaponBurningOnImpactConfig;
     impact?: WeaponProjectileImpactConfig;
     knockback?: WeaponKnockbackConfig;
     beam?: WeaponBeamConfig;
@@ -190,6 +197,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             autoFaceDirection: true,
             destroyWhenExitVisibleArea: true,
         },
+        burningOnImpact: {
+            durationSeconds: 3,
+            tickIntervalSeconds: 0.5,
+            tickDamageRatio: 0.3,
+        },
         impact: {
             aoeRadius: 80,
         },
@@ -238,11 +250,11 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             travelDistance: 1280,
         },
         projectile: {
-            travelSpeed: 4000,
+            travelSpeed: 1000,
             hitRadius: 42,
             rotateSpeed: 0,
             autoFaceDirection: true,
-            faceAngleOffset: 0,
+            faceAngleOffset: -90,
             destroyWhenExitVisibleArea: true,
         },
         impact: {
