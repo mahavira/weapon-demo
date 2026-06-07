@@ -7,8 +7,15 @@ export enum WeaponAttackType {
 }
 
 export interface WeaponBoomerangConfig {
+    forwardTravelDuration?: number;
+    returnDuration?: number;
+    sideOffset?: number;
+    topOffset?: number;
+    hitRadius?: number;
+    rotateSpeed?: number;
     returnDamageScale?: number;
     forwardDistance?: number;
+    destroyWhenExitVisibleArea?: boolean;
 }
 
 export interface WeaponProjectileVolleyConfig {
@@ -22,6 +29,23 @@ export interface WeaponProjectileFlightConfig {
     travelDistance?: number;
     endAtTarget?: boolean;
     visualScale?: number;
+}
+
+export interface WeaponProjectileConfig {
+    travelSpeed?: number;
+    hitRadius?: number;
+    rotateSpeed?: number;
+    autoFaceDirection?: boolean;
+    faceAngleOffset?: number;
+    destroyWhenExitVisibleArea?: boolean;
+}
+
+export interface WeaponBlastBombConfig {
+    travelSpeed?: number;
+    arcHeight?: number;
+    rotateSpeed?: number;
+    autoFaceDirection?: boolean;
+    destroyWhenExitVisibleArea?: boolean;
 }
 
 export interface WeaponProjectileImpactConfig {
@@ -58,6 +82,10 @@ export interface WeaponRicochetConfig {
     maxHits?: number;
     ricochetRange?: number;
     allowBounceBackToPreviousTarget?: boolean;
+    travelSpeed?: number;
+    rotateSpeed?: number;
+    autoFaceDirection?: boolean;
+    destroyWhenExitVisibleArea?: boolean;
 }
 
 export interface WeaponConfigData {
@@ -75,6 +103,8 @@ export interface WeaponConfigData {
     boomerang?: WeaponBoomerangConfig;
     volley?: WeaponProjectileVolleyConfig;
     flight?: WeaponProjectileFlightConfig;
+    projectile?: WeaponProjectileConfig;
+    blastBomb?: WeaponBlastBombConfig;
     impact?: WeaponProjectileImpactConfig;
     knockback?: WeaponKnockbackConfig;
     beam?: WeaponBeamConfig;
@@ -95,8 +125,15 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         damage: 10,
         cooldown: 0.2,
         boomerang: {
+            forwardTravelDuration: 0.75,
+            returnDuration: 0.65,
+            sideOffset: 220,
+            topOffset: 100,
+            hitRadius: 60,
+            rotateSpeed: 18,
             returnDamageScale: 1,
             forwardDistance: 360,
+            destroyWhenExitVisibleArea: true,
         },
     },
 
@@ -115,6 +152,14 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
         flight: {
             travelDistance: 1280,
+        },
+        projectile: {
+            travelSpeed: 1280,
+            hitRadius: 42,
+            rotateSpeed: 0,
+            autoFaceDirection: true,
+            faceAngleOffset: 0,
+            destroyWhenExitVisibleArea: true,
         },
     },
 
@@ -135,6 +180,13 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             travelDistance: 960,
             endAtTarget: true,
             visualScale: 1,
+        },
+        blastBomb: {
+            travelSpeed: 640,
+            arcHeight: 280,
+            rotateSpeed: 18,
+            autoFaceDirection: true,
+            destroyWhenExitVisibleArea: true,
         },
         impact: {
             aoeRadius: 80,
@@ -157,6 +209,14 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         flight: {
             travelDistance: 1280,
         },
+        projectile: {
+            travelSpeed: 4000,
+            hitRadius: 42,
+            rotateSpeed: 0,
+            autoFaceDirection: true,
+            faceAngleOffset: 0,
+            destroyWhenExitVisibleArea: true,
+        },
     },
 
     knockback_cannon: {
@@ -174,6 +234,14 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
         flight: {
             travelDistance: 1280,
+        },
+        projectile: {
+            travelSpeed: 4000,
+            hitRadius: 42,
+            rotateSpeed: 0,
+            autoFaceDirection: true,
+            faceAngleOffset: 0,
+            destroyWhenExitVisibleArea: true,
         },
         knockback: {
             radius: 80,
@@ -228,6 +296,10 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             maxHits: 4,
             ricochetRange: 280,
             allowBounceBackToPreviousTarget: true,
+            travelSpeed: 960,
+            rotateSpeed: 12,
+            autoFaceDirection: true,
+            destroyWhenExitVisibleArea: true,
         },
     },
 };

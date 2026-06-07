@@ -53,6 +53,10 @@ export class RicochetBulletProjectile extends AttackBase {
 
     public configureRicochet(params: Partial<RicochetBulletRuntimeConfig>): void {
         this.runtimeConfig = buildRicochetBulletRuntimeConfig(params);
+        this.travelSpeed = this.runtimeConfig.travelSpeed;
+        this.rotateSpeed = this.runtimeConfig.rotateSpeed;
+        this.autoFaceDirection = this.runtimeConfig.autoFaceDirection;
+        this.destroyWhenExitVisibleArea = this.runtimeConfig.destroyWhenExitVisibleArea;
     }
 
     public startAttack(attackContext: AttackContext): void {

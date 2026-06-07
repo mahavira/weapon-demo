@@ -13,6 +13,7 @@ import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileV
 import { AreaImpactRadiusReceiver, ProjectileDestinationReceiver } from '../base/ProjectileAttackContract';
 import { StatusApplyInfo } from '../../combat/StatusApplyInfo';
 import { StatusEffectType } from '../../core/types/StatusEffectType';
+import { BlastBombRuntimeConfig, buildBlastBombRuntimeConfig } from './BlastBombRuntimeConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -37,6 +38,15 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
     private landingWorldPos: Vec3 | null = null;
     private path: ArcPath | null = null;
     private previousWorldPos: Vec3 = new Vec3();
+
+    public configureBlastBomb(params: Partial<BlastBombRuntimeConfig>): void {
+        const runtimeConfig = buildBlastBombRuntimeConfig(params);
+        this.travelSpeed = runtimeConfig.travelSpeed;
+        this.arcHeight = runtimeConfig.arcHeight;
+        this.rotateSpeed = runtimeConfig.rotateSpeed;
+        this.autoFaceDirection = runtimeConfig.autoFaceDirection;
+        this.destroyWhenExitVisibleArea = runtimeConfig.destroyWhenExitVisibleArea;
+    }
 
     public setDestinationWorldPos(destinationWorldPos: Vec3): void {
         this.landingWorldPos = destinationWorldPos.clone();

@@ -12,6 +12,11 @@ test('blast bomb is configured as a single exploding projectile', () => {
     assert.equal(config.impact?.aoeRadius, 80);
     assert.equal(config.weaponPrefabKey, 'blast_bomb');
     assert.equal(config.flight?.endAtTarget, true);
+    assert.equal(config.blastBomb?.travelSpeed, 640);
+    assert.equal(config.blastBomb?.arcHeight, 280);
+    assert.equal(config.blastBomb?.rotateSpeed, 18);
+    assert.equal(config.blastBomb?.autoFaceDirection, true);
+    assert.equal(config.blastBomb?.destroyWhenExitVisibleArea, true);
 });
 
 test('piercing beam is configured as a beam weapon', () => {
@@ -57,6 +62,10 @@ test('ricochet bullet is configured as a ricochet weapon', () => {
     assert.equal(config.ricochet?.maxHits, 4);
     assert.equal(config.ricochet?.ricochetRange, 280);
     assert.equal(config.ricochet?.allowBounceBackToPreviousTarget, true);
+    assert.equal(config.ricochet?.travelSpeed, 960);
+    assert.equal(config.ricochet?.rotateSpeed, 12);
+    assert.equal(config.ricochet?.autoFaceDirection, true);
+    assert.equal(config.ricochet?.destroyWhenExitVisibleArea, true);
 });
 
 test('knockback cannon is configured as a single projectile with knockback', () => {
@@ -70,4 +79,46 @@ test('knockback cannon is configured as a single projectile with knockback', () 
     assert.equal(config.knockback?.radius, 80);
     assert.equal(config.knockback?.distance, 40);
     assert.equal(config.knockback?.edgeDistanceScale, 0.35);
+    assert.equal(config.projectile?.travelSpeed, 4000);
+    assert.equal(config.projectile?.hitRadius, 42);
+    assert.equal(config.projectile?.rotateSpeed, 0);
+    assert.equal(config.projectile?.autoFaceDirection, true);
+    assert.equal(config.projectile?.faceAngleOffset, 0);
+    assert.equal(config.projectile?.destroyWhenExitVisibleArea, true);
+});
+
+test('arc boomerang is configured as a boomerang weapon with runtime parameters in the table', () => {
+    const config = WeaponConfigTable.arc_boomerang;
+
+    assert.ok(config);
+    assert.equal(config.attackType, WeaponAttackType.Boomerang);
+    assert.equal(config.weaponPrefabKey, 'arc_boomerang');
+    assert.equal(config.boomerang?.forwardTravelDuration, 0.75);
+    assert.equal(config.boomerang?.returnDuration, 0.65);
+    assert.equal(config.boomerang?.sideOffset, 220);
+    assert.equal(config.boomerang?.topOffset, 100);
+    assert.equal(config.boomerang?.hitRadius, 60);
+    assert.equal(config.boomerang?.rotateSpeed, 18);
+    assert.equal(config.boomerang?.returnDamageScale, 1);
+    assert.equal(config.boomerang?.forwardDistance, 360);
+    assert.equal(config.boomerang?.destroyWhenExitVisibleArea, true);
+});
+
+test('spread and rapid projectile weapons keep their motion config in the table', () => {
+    const spreadBulletConfig = WeaponConfigTable.spread_bullet;
+    const rapidBulletConfig = WeaponConfigTable.rapid_bullet;
+
+    assert.equal(spreadBulletConfig.projectile?.travelSpeed, 1280);
+    assert.equal(spreadBulletConfig.projectile?.hitRadius, 42);
+    assert.equal(spreadBulletConfig.projectile?.rotateSpeed, 0);
+    assert.equal(spreadBulletConfig.projectile?.autoFaceDirection, true);
+    assert.equal(spreadBulletConfig.projectile?.faceAngleOffset, 0);
+    assert.equal(spreadBulletConfig.projectile?.destroyWhenExitVisibleArea, true);
+
+    assert.equal(rapidBulletConfig.projectile?.travelSpeed, 4000);
+    assert.equal(rapidBulletConfig.projectile?.hitRadius, 42);
+    assert.equal(rapidBulletConfig.projectile?.rotateSpeed, 0);
+    assert.equal(rapidBulletConfig.projectile?.autoFaceDirection, true);
+    assert.equal(rapidBulletConfig.projectile?.faceAngleOffset, 0);
+    assert.equal(rapidBulletConfig.projectile?.destroyWhenExitVisibleArea, true);
 });

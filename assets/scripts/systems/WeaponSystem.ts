@@ -9,8 +9,21 @@ import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../
 import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
 import { ChainLightningAttack } from '../attacks/ChainLightningAttack';
 import { RicochetBulletProjectile } from '../attacks/projectile/RicochetBulletProjectile';
+import { LinearProjectile } from '../attacks/projectile/LinearProjectile';
+import { BlastBombProjectile } from '../attacks/projectile/BlastBombProjectile';
+import { SpreadBulletProjectile } from '../attacks/projectile/SpreadBulletProjectile';
+import { RapidBulletProjectile } from '../attacks/projectile/RapidBulletProjectile';
+import { PiercingBeam } from '../attacks/PiercingBeam';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
+import {
+    resolveBlastBombRuntimeConfig,
+    resolveBoomerangRuntimeConfig,
+    resolveChainLightningRuntimeConfig,
+    resolveLinearProjectileRuntimeConfig,
+    resolveRicochetRuntimeConfig,
+} from './WeaponAttackRuntimeConfigResolver';
+import { resolveWeaponAttackBinding } from './WeaponAttackBinding';
 
 const { ccclass, property } = _decorator;
 
@@ -56,6 +69,11 @@ export class WeaponSystem extends Component {
     private static readonly DEFAULT_PROJECTILE_TRAVEL_DISTANCE = 1280;
 
     private static readonly DEFAULT_PROJECTILE_SHOT_DELAY = 0;
+
+    constructor() {
+        super();
+        console.log('[WeaponSystem] Constructor');
+    }
 
     public setCurrentWeapon(weaponId: string): void {
         if (!WeaponConfigTable[weaponId]) {
@@ -151,8 +169,8 @@ export class WeaponSystem extends Component {
         const { node, attack } = spawnedAttack;
 
         const boomerangAttack = node.getComponent(BoomerangProjectile);
-        if (boomerangAttack && config.boomerang?.returnDamageScale !== undefined) {
-            boomerangAttack.returnDamageScale = config.boomerang.returnDamageScale;
+        if (boomerangAttack) {
+            boomerangAttack.configureBoomerang(resolveBoomerangRuntimeConfig(config));
         }
 
         const context = this.buildAttackContext(
@@ -246,7 +264,7 @@ export class WeaponSystem extends Component {
             return false;
         }
 
-        chainAttack.configureChain(config.chain ?? {});
+        chainAttack.configureChain(resolveChainLightningRuntimeConfig(config));
 
         const context = this.buildAttackContext(
             config,
@@ -281,7 +299,7 @@ export class WeaponSystem extends Component {
             return false;
         }
 
-        ricochetAttack.configureRicochet(config.ricochet ?? {});
+        ricochetAttack.configureRicochet(resolveRicochetRuntimeConfig(config));
 
         const context = this.buildAttackContext(
             config,
@@ -364,6 +382,7 @@ export class WeaponSystem extends Component {
             return null;
         }
 
+        this.applyProjectileAttackRuntimeConfig(attack, config);
         attack.setDestinationWorldPos(destinationWorldPos);
 
         if (isAreaImpactRadiusReceiver(attack)) {
@@ -397,22 +416,54 @@ export class WeaponSystem extends Component {
         return { node, attack };
     }
 
-    private attachAttackComponentIfNeeded(node: Node, config: WeaponConfigData): void {
-        if (config.attackType !== WeaponAttackType.Chain) {
-            if (config.attackType !== WeaponAttackType.Ricochet) {
-                return;
-            }
-        }
-
-        if (config.attackType === WeaponAttackType.Chain) {
-            if (!node.getComponent(ChainLightningAttack)) {
-                node.addComponent(ChainLightningAttack);
-            }
+    private applyProjectileAttackRuntimeConfig(attack: AttackBase, config: WeaponConfigData): void {
+        if (attack instanceof BlastBombProjectile) {
+            attack.configureBlastBomb(resolveBlastBombRuntimeConfig(config));
             return;
         }
 
-        if (!node.getComponent(RicochetBulletProjectile)) {
-            node.addComponent(RicochetBulletProjectile);
+        if (attack instanceof LinearProjectile) {
+            attack.configureProjectile(resolveLinearProjectileRuntimeConfig(config));
+        }
+    }
+
+    private attachAttackComponentIfNeeded(node: Node, config: WeaponConfigData): void {
+        switch (resolveWeaponAttackBinding(config.weaponPrefabKey, config.attackType)) {
+            case 'boomerang':
+                if (!node.getComponent(BoomerangProjectile)) {
+                    node.addComponent(BoomerangProjectile);
+                }
+                return;
+            case 'spread':
+                if (!node.getComponent(SpreadBulletProjectile)) {
+                    node.addComponent(SpreadBulletProjectile);
+                }
+                return;
+            case 'blast_bomb':
+                if (!node.getComponent(BlastBombProjectile)) {
+                    node.addComponent(BlastBombProjectile);
+                }
+                return;
+            case 'rapid_bullet':
+                if (!node.getComponent(RapidBulletProjectile)) {
+                    node.addComponent(RapidBulletProjectile);
+                }
+                return;
+            case 'piercing_beam':
+                if (!node.getComponent(PiercingBeam)) {
+                    node.addComponent(PiercingBeam);
+                }
+                return;
+            case 'chain_lightning':
+                if (!node.getComponent(ChainLightningAttack)) {
+                    node.addComponent(ChainLightningAttack);
+                }
+                return;
+            case 'ricochet_bullet':
+                if (!node.getComponent(RicochetBulletProjectile)) {
+                    node.addComponent(RicochetBulletProjectile);
+                }
+                return;
         }
     }
 

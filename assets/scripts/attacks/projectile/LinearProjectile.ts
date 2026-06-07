@@ -12,6 +12,7 @@ import { FIRST_HIT_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { HitSystem } from '../../combat/HitSystem';
 import { DamageChannel } from '../../core/types/DamageChannel';
 import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
+import { LinearProjectileRuntimeConfig, buildLinearProjectileRuntimeConfig } from './LinearProjectileRuntimeConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -39,6 +40,16 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
     private path: LinePath | null = null;
     private destinationWorldPos: Vec3 | null = null;
     private previousWorldPos: Vec3 = new Vec3();
+
+    public configureProjectile(params: Partial<LinearProjectileRuntimeConfig>): void {
+        const runtimeConfig = buildLinearProjectileRuntimeConfig(params);
+        this.travelSpeed = runtimeConfig.travelSpeed;
+        this.hitRadius = runtimeConfig.hitRadius;
+        this.rotateSpeed = runtimeConfig.rotateSpeed;
+        this.autoFaceDirection = runtimeConfig.autoFaceDirection;
+        this.faceAngleOffset = runtimeConfig.faceAngleOffset;
+        this.destroyWhenExitVisibleArea = runtimeConfig.destroyWhenExitVisibleArea;
+    }
 
     public setDestinationWorldPos(destinationWorldPos: Vec3): void {
         this.destinationWorldPos = destinationWorldPos.clone();

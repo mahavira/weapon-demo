@@ -12,6 +12,7 @@ import { HitSystem } from '../../combat/HitSystem';
 import { PENETRATING_PER_PHASE_POLICY } from '../../combat/HitPolicy';
 import { DamageChannel } from '../../core/types/DamageChannel';
 import { getVisibleAreaRect, isNodeFullyOutsideVisibleArea } from './ProjectileViewportCulling';
+import { BoomerangRuntimeConfig, buildBoomerangRuntimeConfig } from '../BoomerangRuntimeConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -44,6 +45,18 @@ export class BoomerangProjectile extends AttackBase {
     private hitTracker = new AttackHitTracker<Node>();
     private path: BoomerangPath | null = null;
     private previousWorldPos: Vec3 = new Vec3();
+
+    public configureBoomerang(params: Partial<BoomerangRuntimeConfig>): void {
+        const runtimeConfig = buildBoomerangRuntimeConfig(params);
+        this.forwardTravelDuration = runtimeConfig.forwardTravelDuration;
+        this.returnDuration = runtimeConfig.returnDuration;
+        this.sideOffset = runtimeConfig.sideOffset;
+        this.topOffset = runtimeConfig.topOffset;
+        this.hitRadius = runtimeConfig.hitRadius;
+        this.rotateSpeed = runtimeConfig.rotateSpeed;
+        this.returnDamageScale = runtimeConfig.returnDamageScale;
+        this.destroyWhenExitVisibleArea = runtimeConfig.destroyWhenExitVisibleArea;
+    }
 
     public startAttack(context: AttackContext): void {
         if (!context.destinationWorldPos) {
