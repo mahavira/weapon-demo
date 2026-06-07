@@ -50,6 +50,8 @@ export interface WeaponBlastBombConfig {
 
 export interface WeaponProjectileImpactConfig {
     aoeRadius?: number;
+    /** 范围边缘的伤害系数；中心点为 1，向外按距离线性衰减到该值 */
+    edgeDamageScale?: number;
 }
 
 export interface WeaponKnockbackConfig {
@@ -242,6 +244,10 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
             autoFaceDirection: true,
             faceAngleOffset: 0,
             destroyWhenExitVisibleArea: true,
+        },
+        impact: {
+            aoeRadius: 80,
+            edgeDamageScale: 0.35,
         },
         knockback: {
             radius: 80,
