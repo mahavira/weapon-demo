@@ -28,6 +28,13 @@ export interface WeaponProjectileImpactConfig {
     aoeRadius?: number;
 }
 
+export interface WeaponKnockbackConfig {
+    radius?: number;
+    distance?: number;
+    /** 距离越远的目标受到的敲击距离越接近base distance，距离越近的目标受到的敲击距离越接近base distance * edgeDistanceScale */
+    edgeDistanceScale?: number;
+}
+
 export interface WeaponBeamConfig {
     durationSeconds?: number;
     tickIntervalSeconds?: number;
@@ -56,15 +63,20 @@ export interface WeaponRicochetConfig {
 export interface WeaponConfigData {
     id: string;
     name: string;
+    /** 攻击类型    */
     attackType: WeaponAttackType;
+    /** 预制体Key */
     weaponPrefabKey: string;
+    /** 攻击力 */
     damage: number;
+    /** 冷却时间 */
     cooldown?: number;
 
     boomerang?: WeaponBoomerangConfig;
     volley?: WeaponProjectileVolleyConfig;
     flight?: WeaponProjectileFlightConfig;
     impact?: WeaponProjectileImpactConfig;
+    knockback?: WeaponKnockbackConfig;
     beam?: WeaponBeamConfig;
     chain?: WeaponChainConfig;
     ricochet?: WeaponRicochetConfig;
@@ -144,6 +156,29 @@ export const WeaponConfigTable: Record<string, WeaponConfigData> = {
         },
         flight: {
             travelDistance: 1280,
+        },
+    },
+
+    knockback_cannon: {
+        id: 'knockback_cannon',
+        name: '椰子炮',
+        attackType: WeaponAttackType.Projectile,
+        weaponPrefabKey: 'knockback_cannon',
+        damage: 24,
+        cooldown: 0.2,
+        volley: {
+            count: 1,
+            spacingX: 0,
+            targetSpreadX: 0,
+            shotDelay: 0.00,
+        },
+        flight: {
+            travelDistance: 1280,
+        },
+        knockback: {
+            radius: 80,
+            distance: 40,
+            edgeDistanceScale: 0.35,
         },
     },
 

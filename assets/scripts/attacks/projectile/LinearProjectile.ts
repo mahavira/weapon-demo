@@ -30,6 +30,9 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
     autoFaceDirection: boolean = true;
 
     @property
+    faceAngleOffset: number = 0;
+
+    @property
     destroyWhenExitVisibleArea: boolean = true;
 
     private hitTracker = new AttackHitTracker<Node>();
@@ -136,7 +139,7 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
         const dx = destinationWorldPos.x - current.x;
         const dy = destinationWorldPos.y - current.y;
         const radians = Math.atan2(dy, dx);
-        this.node.angle = radians * 180 / Math.PI;
+        this.node.angle = radians * 180 / Math.PI + this.faceAngleOffset;
     }
 
     private checkHit(previousWorldPos: Vec3, currentWorldPos: Vec3): void {

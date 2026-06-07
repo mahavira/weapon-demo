@@ -1,5 +1,6 @@
 import { _decorator, Component, UITransform } from 'cc';
 import { EnemyHealth } from './EnemyHealth';
+import { EnemyMovement } from './EnemyMovement';
 import { EnemyStatusController } from './EnemyStatusController';
 import { EnemyVisual } from './EnemyVisual';
 import { Hurtbox } from './Hurtbox';
@@ -17,6 +18,7 @@ export class Enemy extends Component {
     private hurtbox: Hurtbox | null = null;
 
     protected onLoad(): void {
+        this.ensureMovement();
         this.ensureStatusController();
 
         const existingHurtbox = this.node.getComponent(Hurtbox);
@@ -36,6 +38,14 @@ export class Enemy extends Component {
         }
 
         this.node.addComponent(EnemyStatusController);
+    }
+
+    private ensureMovement(): void {
+        if (this.node.getComponent(EnemyMovement)) {
+            return;
+        }
+
+        this.node.addComponent(EnemyMovement);
     }
 
     private resolveDefaultHitRadius(): number {

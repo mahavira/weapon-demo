@@ -58,3 +58,16 @@ test('ricochet bullet is configured as a ricochet weapon', () => {
     assert.equal(config.ricochet?.ricochetRange, 280);
     assert.equal(config.ricochet?.allowBounceBackToPreviousTarget, true);
 });
+
+test('knockback cannon is configured as a single projectile with knockback', () => {
+    const config = WeaponConfigTable.knockback_cannon;
+
+    assert.ok(config);
+    assert.equal(config.attackType, WeaponAttackType.Projectile);
+    assert.equal(config.damage, 24);
+    assert.equal(config.volley?.count, 1);
+    assert.equal(config.weaponPrefabKey, 'knockback_cannon');
+    assert.equal(config.knockback?.radius, 80);
+    assert.equal(config.knockback?.distance, 40);
+    assert.equal(config.knockback?.edgeDistanceScale, 0.35);
+});
