@@ -5,19 +5,12 @@ import { NearestTargetProvider } from '../targeting/NearestTargetProvider';
 import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
 import { isAreaImpactRadiusReceiver, isProjectileDestinationReceiver } from '../attacks/base/ProjectileAttackContract';
-import { LinearProjectile } from '../attacks/projectile/LinearProjectile';
-import { BlastBombProjectile } from '../attacks/projectile/BlastBombProjectile';
 import { DamageInfo } from '../combat/DamageInfo';
 import { DamageSourceType } from '../core/types/DamageTypes';
-import {
-    resolveBlastBombRuntimeConfig,
-    resolveLinearProjectileRuntimeConfig,
-} from './WeaponAttackRuntimeConfigResolver';
 import { resolveWeaponAttackBinding } from './WeaponAttackBinding';
 import {
     createWeaponAttackExecutorDeps,
 } from './WeaponAttackExecutor';
-import { buildProjectileShotPlans, ProjectileShotPlan, resolveProjectileDestinationWorldPos } from '../attacks/projectile/ProjectileShotPlanner';
 import { assembleWeaponAttack, getAssembledWeaponAttack } from './WeaponAttackAssembler';
 import { getWeaponAttackExecutor } from './WeaponAttackExecutorRegistry';
 import { fireWeaponWithCooldown } from './WeaponFireCoordinator';
@@ -132,24 +125,6 @@ export class WeaponSystem extends Component {
         return true;
     }
 
-    private buildProjectileShotPlans(config: WeaponConfigData, targetWorldPos: Vec3): ProjectileShotPlan[] {
-        return buildProjectileShotPlans(config, targetWorldPos, {
-            projectileVolleyCount: WeaponSystem.DEFAULT_PROJECTILE_VOLLEY_COUNT,
-            projectileSpacingX: WeaponSystem.DEFAULT_PROJECTILE_SPACING_X,
-            projectileTargetSpreadX: WeaponSystem.DEFAULT_PROJECTILE_TARGET_SPREAD_X,
-            projectileShotDelay: WeaponSystem.DEFAULT_PROJECTILE_SHOT_DELAY,
-        });
-    }
-
-    private resolveProjectileDestinationWorldPos(config: WeaponConfigData, spawnWorldPos: Vec3, aimWorldPos: Vec3): Vec3 {
-        return resolveProjectileDestinationWorldPos(
-            config,
-            spawnWorldPos,
-            aimWorldPos,
-            WeaponSystem.DEFAULT_PROJECTILE_TRAVEL_DISTANCE
-        );
-    }
-
     private spawnProjectileShot(
         config: WeaponConfigData,
         spawnWorldPos: Vec3,
@@ -188,7 +163,6 @@ export class WeaponSystem extends Component {
             return null;
         }
 
-        this.applyProjectileAttackRuntimeConfig(attack, config);
         attack.setDestinationWorldPos(destinationWorldPos);
 
         if (isAreaImpactRadiusReceiver(attack)) {
@@ -212,7 +186,7 @@ export class WeaponSystem extends Component {
         this.projectileRoot.addChild(node);
         this.applyProjectileVisualOverrides(node, config);
         const attackBinding = resolveWeaponAttackBinding(config.weaponPrefabKey, config.attackType);
-        assembleWeaponAttack(node, attackBinding);
+        assembleWeaponAttack(node, attackBinding, config);
 
         const attack = getAssembledWeaponAttack(node, attackBinding);
         if (!attack) {
@@ -222,18 +196,6 @@ export class WeaponSystem extends Component {
         }
 
         return { node, attack };
-    }
-
-    private applyProjectileAttackRuntimeConfig(attack: AttackBase, config: WeaponConfigData): void {
-        if (attack instanceof BlastBombProjectile) {
-            attack.configureBlastBomb(resolveBlastBombRuntimeConfig(config));
-            attack.configureBurningOnImpact(config.burningOnImpact ?? null);
-            return;
-        }
-
-        if (attack instanceof LinearProjectile) {
-            attack.configureProjectile(resolveLinearProjectileRuntimeConfig(config));
-        }
     }
 
     private buildAttackContext(
