@@ -75,7 +75,7 @@ export class ChainLightningAttack extends AttackBase {
     public startAttack(attackContext: AttackContext): void {
         const initialTarget = this.resolveInitialTarget(attackContext);
         if (!initialTarget) {
-            this.node.destroy();
+            this.releaseAttackNode();
             return;
         }
 
@@ -93,7 +93,7 @@ export class ChainLightningAttack extends AttackBase {
         }
 
         this.cleanupRuntimeState();
-        this.node.destroy();
+        this.releaseAttackNode();
     }
 
     protected onDestroy(): void {
@@ -106,14 +106,13 @@ export class ChainLightningAttack extends AttackBase {
             return targetNode;
         }
 
-        const fallbackTargets = EnemyRegistry.getDamageableTargets(DamageChannel.Projectile);
         let fallbackTarget: Node | null = null;
         let nearestDistanceSq = this.runtimeConfig.initialHitRadius * this.runtimeConfig.initialHitRadius;
 
-        for (const hurtbox of fallbackTargets) {
+        EnemyRegistry.forEachDamageableTarget(DamageChannel.Projectile, (hurtbox) => {
             const targetNodeCandidate = hurtbox.node;
             if (!this.isTargetNodeValid(targetNodeCandidate)) {
-                continue;
+                return;
             }
 
             const targetWorldPos = hurtbox.getWorldCenter();
@@ -125,7 +124,7 @@ export class ChainLightningAttack extends AttackBase {
                 nearestDistanceSq = distanceSq;
                 fallbackTarget = targetNodeCandidate;
             }
-        }
+        });
 
         return fallbackTarget;
     }
@@ -203,10 +202,10 @@ export class ChainLightningAttack extends AttackBase {
         const rangeSq = this.runtimeConfig.chainRange * this.runtimeConfig.chainRange;
         const candidateTargets: Node[] = [];
 
-        for (const hurtbox of EnemyRegistry.getDamageableTargets(DamageChannel.Projectile)) {
+        EnemyRegistry.forEachDamageableTarget(DamageChannel.Projectile, (hurtbox) => {
             const candidateTargetNode = hurtbox.node;
             if (!this.isTargetNodeValid(candidateTargetNode) || this.visitedTargets.has(candidateTargetNode)) {
-                continue;
+                return;
             }
 
             const candidateWorldPos = hurtbox.getWorldCenter();
@@ -217,7 +216,7 @@ export class ChainLightningAttack extends AttackBase {
             if (distanceSq <= rangeSq) {
                 candidateTargets.push(candidateTargetNode);
             }
-        }
+        });
 
         if (candidateTargets.length === 0) {
             return null;
@@ -276,6 +275,7 @@ export class ChainLightningAttack extends AttackBase {
         this.attackContext = null;
         this.visitedTargets.clear();
         this.activeScheduledHits = 0;
+        this.unscheduleAllCallbacks();
         Tween.stopAllByTarget(this.node);
         this.lightningRenderer.cleanup();
     }
