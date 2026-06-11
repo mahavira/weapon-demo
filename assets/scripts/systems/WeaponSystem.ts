@@ -45,7 +45,12 @@ export class WeaponSystem extends Component {
     @property(NearestTargetProvider)
     targetProvider: NearestTargetProvider | null = null;
 
+    @property
+    attackPoolLimitPerPrefabKey: number = 24;
+
     private nextFireTimeByWeaponId: Record<string, number> = {};
+    private readonly inactiveAttackNodesByPrefabKey = new Map<string, Node[]>();
+    private readonly prefabKeyByAttackNode = new Map<Node, string>();
 
     private static readonly DEFAULT_PROJECTILE_VOLLEY_COUNT = 3;
     private static readonly DEFAULT_PROJECTILE_SPACING_X = 32;
@@ -82,6 +87,10 @@ export class WeaponSystem extends Component {
             nowSeconds: Date.now() / 1000,
             fireByConfig: (currentConfig) => this.fireByConfig(currentConfig),
         });
+    }
+
+    protected onDestroy(): void {
+        this.destroyAllPooledAttackNodes();
     }
 
     private fireByConfig(config: WeaponConfigData): boolean {
@@ -159,7 +168,7 @@ export class WeaponSystem extends Component {
         const { node, attack } = spawnedAttack;
         if (!isProjectileDestinationReceiver(attack)) {
             console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} attack does not support setDestinationWorldPos`);
-            node.destroy();
+            this.destroyAttackNode(node);
             return null;
         }
 
@@ -182,7 +191,7 @@ export class WeaponSystem extends Component {
             return null;
         }
 
-        const node = instantiate(prefab);
+        const node = this.acquireAttackNode(config);
         this.projectileRoot.addChild(node);
         this.applyProjectileVisualOverrides(node, config);
         const attackBinding = resolveWeaponAttackBinding(config.weaponPrefabKey, config.attackType);
@@ -191,11 +200,103 @@ export class WeaponSystem extends Component {
         const attack = getAssembledWeaponAttack(node, attackBinding);
         if (!attack) {
             console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} missing AttackBase component`);
-            node.destroy();
+            this.destroyAttackNode(node);
             return null;
         }
 
+        attack.setAttackNodeReleaseHandler((attackNode) => this.releaseAttackNode(attackNode));
         return { node, attack };
+    }
+
+    private acquireAttackNode(config: WeaponConfigData): Node {
+        const pooledNode = this.popPooledAttackNode(config.weaponPrefabKey);
+        if (pooledNode) {
+            pooledNode.active = true;
+            return pooledNode;
+        }
+
+        const prefab = this.prefabRegistry?.getPrefabByKey(config.weaponPrefabKey);
+        if (!prefab) {
+            throw new Error(`[WeaponSystem] Missing prefab for key: ${config.weaponPrefabKey}`);
+        }
+
+        const node = instantiate(prefab);
+        this.prefabKeyByAttackNode.set(node, config.weaponPrefabKey);
+        return node;
+    }
+
+    private popPooledAttackNode(prefabKey: string): Node | null {
+        const pool = this.inactiveAttackNodesByPrefabKey.get(prefabKey);
+        if (!pool) {
+            return null;
+        }
+
+        while (pool.length > 0) {
+            const pooledNode = pool.pop();
+            if (pooledNode?.isValid) {
+                return pooledNode;
+            }
+        }
+
+        return null;
+    }
+
+    private releaseAttackNode(node: Node): void {
+        if (!node || !node.isValid) {
+            return;
+        }
+
+        const prefabKey = this.prefabKeyByAttackNode.get(node);
+        if (!prefabKey) {
+            node.destroy();
+            return;
+        }
+
+        const poolLimit = Math.max(0, Math.floor(this.attackPoolLimitPerPrefabKey));
+        const pool = this.getAttackNodePool(prefabKey);
+        if (pool.length >= poolLimit) {
+            this.destroyAttackNode(node);
+            return;
+        }
+
+        node.active = false;
+        node.angle = 0;
+        node.setScale(1, 1, 1);
+        node.removeFromParent();
+        pool.push(node);
+    }
+
+    private destroyAttackNode(node: Node): void {
+        if (!node || !node.isValid) {
+            return;
+        }
+
+        this.prefabKeyByAttackNode.delete(node);
+        node.destroy();
+    }
+
+    private getAttackNodePool(prefabKey: string): Node[] {
+        const pool = this.inactiveAttackNodesByPrefabKey.get(prefabKey);
+        if (pool) {
+            return pool;
+        }
+
+        const nextPool: Node[] = [];
+        this.inactiveAttackNodesByPrefabKey.set(prefabKey, nextPool);
+        return nextPool;
+    }
+
+    private destroyAllPooledAttackNodes(): void {
+        for (const pool of this.inactiveAttackNodesByPrefabKey.values()) {
+            for (const node of pool) {
+                if (node.isValid) {
+                    this.destroyAttackNode(node);
+                }
+            }
+        }
+
+        this.inactiveAttackNodesByPrefabKey.clear();
+        this.prefabKeyByAttackNode.clear();
     }
 
     private buildAttackContext(
@@ -271,6 +372,8 @@ export class WeaponSystem extends Component {
     }
 
     private applyProjectileVisualOverrides(node: Node, config: WeaponConfigData): void {
+        node.setScale(1, 1, 1);
+
         if (config.flight?.visualScale !== undefined) {
             node.setScale(config.flight.visualScale, config.flight.visualScale, 1);
         }
