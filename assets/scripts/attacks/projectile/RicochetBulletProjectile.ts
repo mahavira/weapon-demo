@@ -62,7 +62,7 @@ export class RicochetBulletProjectile extends AttackBase {
     public startAttack(attackContext: AttackContext): void {
         const initialTargetNode = attackContext.targetNode;
         if (!this.isTargetNodeValid(initialTargetNode)) {
-            this.node.destroy();
+            this.releaseAttackNode();
             return;
         }
 
@@ -83,7 +83,7 @@ export class RicochetBulletProjectile extends AttackBase {
         }
 
         this.cleanupRuntimeState();
-        this.node.destroy();
+        this.releaseAttackNode();
     }
 
     protected onDestroy(): void {
