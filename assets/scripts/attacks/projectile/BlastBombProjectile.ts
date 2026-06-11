@@ -75,7 +75,7 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
             ?? null;
 
         if (!finalLandingWorldPos) {
-            this.node.destroy();
+            this.releaseAttackNode();
             return;
         }
 
@@ -128,7 +128,7 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
         if (!this.node || !this.node.isValid) return;
 
         this.cleanupRuntimeState();
-        this.node.destroy();
+        this.releaseAttackNode();
     }
 
     protected onDestroy(): void {
