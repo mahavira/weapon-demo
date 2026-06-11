@@ -5,7 +5,6 @@ import { AttackHitTracker } from '../base/AttackHitTracker';
 import { ProjectileDestinationReceiver } from '../base/ProjectileAttackContract';
 import { AttackPhase } from '../../core/types/AttackTypes';
 import { LinePath } from '../../movement/paths/LinePath';
-import { EnemyRegistry } from '../../combat/EnemyRegistry';
 import { HitInfo } from '../../combat/HitInfo';
 import { DamageResolver } from '../../combat/DamageResolver';
 import { FIRST_HIT_PER_PHASE_POLICY } from '../../combat/HitPolicy';
@@ -167,7 +166,7 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
             damageChannel: DamageChannel.Projectile,
             policy: FIRST_HIT_PER_PHASE_POLICY,
             hitTracker: this.hitTracker,
-        }, EnemyRegistry.getDamageableTargets(DamageChannel.Projectile));
+        });
 
         const [firstHit] = hits;
         if (!firstHit) return;
