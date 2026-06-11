@@ -4,7 +4,6 @@ import { AttackContext } from '../base/AttackContext';
 import { AttackHitTracker } from '../base/AttackHitTracker';
 import { AttackPhase } from '../../core/types/AttackTypes';
 import { BoomerangPath } from '../../movement/paths/BoomerangPath';
-import { EnemyRegistry } from '../../combat/EnemyRegistry';
 import { HitInfo } from '../../combat/HitInfo';
 import { DamageResolver } from '../../combat/DamageResolver';
 import { DamageInfo } from '../../combat/DamageInfo';
@@ -124,7 +123,7 @@ export class BoomerangProjectile extends AttackBase {
             damageChannel: DamageChannel.Projectile,
             policy: PENETRATING_PER_PHASE_POLICY,
             hitTracker: this.hitTracker,
-        }, EnemyRegistry.getDamageableTargets(DamageChannel.Projectile));
+        });
 
         for (const hit of hits) {
             this.hitTracker.markHit(phase, hit.target);
