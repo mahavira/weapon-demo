@@ -190,16 +190,16 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
     private applyExplosionDamageAtWorldPos(hitWorldPos: Vec3, phase: AttackPhase): void {
         if (!this.attackContext) return;
 
-        const targets = EnemyRegistry.getDamageableTargets(DamageChannel.Area);
+        EnemyRegistry.forEachDamageableTarget(DamageChannel.Area, (hurtbox) => {
+            if (!this.attackContext) return;
 
-        for (const hurtbox of targets) {
             const target = hurtbox.node;
-            if (!target || !target.isValid || target === this.attackContext.attackerNode) continue;
+            if (!target || !target.isValid || target === this.attackContext.attackerNode) return;
 
             const center = hurtbox.getWorldCenter();
             const combinedRadius = this.impactAoeRadius + hurtbox.getHitRadius();
             if (MathUtils.distanceSq2D(hitWorldPos, center) > combinedRadius * combinedRadius) {
-                continue;
+                return;
             }
 
             const hitInfo = new HitInfo({
@@ -212,7 +212,7 @@ export class BlastBombProjectile extends AttackBase implements ProjectileDestina
             });
 
             DamageResolver.applyDamage(hitInfo);
-        }
+        });
     }
 
     private shouldCullOutsideVisibleArea(): boolean {
