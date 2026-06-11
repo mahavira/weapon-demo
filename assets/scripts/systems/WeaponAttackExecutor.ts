@@ -2,20 +2,11 @@ import { Node, Vec3 } from 'cc';
 import { WeaponConfigData } from '../config/WeaponConfigTable';
 import { AttackBase } from '../attacks/base/AttackBase';
 import { AttackContext } from '../attacks/base/AttackContext';
-import { BoomerangProjectile } from '../attacks/projectile/BoomerangProjectile';
-import { ChainLightningAttack } from '../attacks/ChainLightningAttack';
-import { RicochetBulletProjectile } from '../attacks/projectile/RicochetBulletProjectile';
-import { isBeamRuntimeConfigReceiver } from '../attacks/BeamAttackContract';
 import {
     buildProjectileShotPlans,
     ProjectileShotPlan,
     resolveProjectileDestinationWorldPos,
 } from '../attacks/projectile/ProjectileShotPlanner';
-import {
-    resolveBoomerangRuntimeConfig,
-    resolveChainLightningRuntimeConfig,
-    resolveRicochetRuntimeConfig,
-} from './WeaponAttackRuntimeConfigResolver';
 
 export type WeaponAttackExecutorDeps = {
     weaponPointNode: Node;
@@ -102,12 +93,6 @@ export function fireBoomerangAttack(config: WeaponConfigData, deps: WeaponAttack
         return false;
     }
 
-    const { node, attack } = spawnedAttack;
-    const boomerangAttack = node.getComponent(BoomerangProjectile);
-    if (boomerangAttack) {
-        boomerangAttack.configureBoomerang(resolveBoomerangRuntimeConfig(config));
-    }
-
     const context = deps.buildAttackContext(
         config,
         deps.weaponPointNode.worldPosition.clone(),
@@ -115,7 +100,7 @@ export function fireBoomerangAttack(config: WeaponConfigData, deps: WeaponAttack
         null
     );
 
-    attack.startAttack(context);
+    spawnedAttack.attack.startAttack(context);
     return true;
 }
 
@@ -153,15 +138,7 @@ export function fireBeamAttack(config: WeaponConfigData, deps: WeaponAttackExecu
         return false;
     }
 
-    const { node, attack } = spawnedAttack;
-    if (!isBeamRuntimeConfigReceiver(attack)) {
-        console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} attack does not support beam runtime config`);
-        node.destroy();
-        return false;
-    }
-
-    attack.setBeamConfig(config.beam ?? {});
-    attack.startAttack(
+    spawnedAttack.attack.startAttack(
         deps.buildAttackContext(
             config,
             deps.weaponPointNode.worldPosition.clone(),
@@ -184,16 +161,7 @@ export function fireChainAttack(config: WeaponConfigData, deps: WeaponAttackExec
         return false;
     }
 
-    const { node, attack } = spawnedAttack;
-    const chainAttack = node.getComponent(ChainLightningAttack);
-    if (!chainAttack) {
-        console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} is missing ChainLightningAttack`);
-        node.destroy();
-        return false;
-    }
-
-    chainAttack.configureChain(resolveChainLightningRuntimeConfig(config));
-    attack.startAttack(
+    spawnedAttack.attack.startAttack(
         deps.buildAttackContext(
             config,
             deps.weaponPointNode.worldPosition.clone(),
@@ -216,16 +184,7 @@ export function fireRicochetAttack(config: WeaponConfigData, deps: WeaponAttackE
         return false;
     }
 
-    const { node, attack } = spawnedAttack;
-    const ricochetAttack = node.getComponent(RicochetBulletProjectile);
-    if (!ricochetAttack) {
-        console.error(`[WeaponSystem] Prefab ${config.weaponPrefabKey} is missing RicochetBulletProjectile`);
-        node.destroy();
-        return false;
-    }
-
-    ricochetAttack.configureRicochet(resolveRicochetRuntimeConfig(config));
-    attack.startAttack(
+    spawnedAttack.attack.startAttack(
         deps.buildAttackContext(
             config,
             deps.weaponPointNode.worldPosition.clone(),
