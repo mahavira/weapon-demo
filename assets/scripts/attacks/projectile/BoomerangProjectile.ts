@@ -60,7 +60,7 @@ export class BoomerangProjectile extends AttackBase {
 
     public startAttack(context: AttackContext): void {
         if (!context.destinationWorldPos) {
-            this.node.destroy();
+            this.releaseAttackNode();
             return;
         }
 
@@ -172,7 +172,7 @@ export class BoomerangProjectile extends AttackBase {
 
     public stopAttack(): void {
         this.cleanupRuntimeState();
-        this.node.destroy();
+        this.releaseAttackNode();
     }
 
     protected onDestroy() {
