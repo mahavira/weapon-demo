@@ -62,7 +62,7 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
             ?? null;
 
         if (!finalDestinationWorldPos) {
-            this.node.destroy();
+            this.releaseAttackNode();
             return;
         }
 
@@ -112,7 +112,7 @@ export abstract class LinearProjectile extends AttackBase implements ProjectileD
         if (!this.node || !this.node.isValid) return;
 
         this.cleanupRuntimeState();
-        this.node.destroy();
+        this.releaseAttackNode();
     }
 
     protected onDestroy(): void {
