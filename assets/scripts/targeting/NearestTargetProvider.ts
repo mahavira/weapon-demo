@@ -1,8 +1,6 @@
 import { _decorator, Component, Node } from 'cc';
 import { ITargetProvider } from '../core/interfaces/ITargetProvider';
 import { EnemyRegistry } from '../combat/EnemyRegistry';
-import { findNearestTarget, findTargetsWithinRange } from './TargetSelection';
-import type { TargetSelectionCandidate } from './TargetSelection';
 
 const { ccclass, property } = _decorator;
 
@@ -16,53 +14,50 @@ export class NearestTargetProvider extends Component implements ITargetProvider 
             return null;
         }
 
-        return findNearestTarget(
-            this.targetingOriginNode.worldPosition,
-            this.buildTargetSelectionCandidates()
-        );
+        const originWorldPos = this.targetingOriginNode.worldPosition;
+        let nearestTargetNode: Node | null = null;
+        let nearestDistanceSq = Number.MAX_VALUE;
+
+        EnemyRegistry.forEachTargetableTarget((hurtbox) => {
+            const targetNode = hurtbox.node;
+            if (!targetNode || !targetNode.isValid) {
+                return;
+            }
+
+            const targetWorldPos = targetNode.worldPosition;
+            const dx = targetWorldPos.x - originWorldPos.x;
+            const dy = targetWorldPos.y - originWorldPos.y;
+            const distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq < nearestDistanceSq) {
+                nearestDistanceSq = distanceSq;
+                nearestTargetNode = targetNode;
+            }
+        });
+
+        return nearestTargetNode;
     }
 
     public getTargetsWithinRange(center: Node, range: number): Node[] {
-        return findTargetsWithinRange(
-            center.worldPosition,
-            range,
-            this.buildAreaSelectionCandidates()
-        );
-    }
+        const centerWorldPos = center.worldPosition;
+        const rangeSq = range * range;
+        const targets: Node[] = [];
 
-    private buildTargetSelectionCandidates(): TargetSelectionCandidate<Node>[] {
-        const candidates: TargetSelectionCandidate<Node>[] = [];
-
-        for (const hurtbox of EnemyRegistry.getTargetableTargets()) {
+        EnemyRegistry.forEachTargetableTarget((hurtbox) => {
             const targetNode = hurtbox.node;
             if (!targetNode || !targetNode.isValid) {
-                continue;
+                return;
             }
 
-            candidates.push({
-                target: targetNode,
-                worldPos: targetNode.worldPosition,
-            });
-        }
+            const targetWorldPos = hurtbox.getWorldCenter();
+            const dx = targetWorldPos.x - centerWorldPos.x;
+            const dy = targetWorldPos.y - centerWorldPos.y;
 
-        return candidates;
-    }
-
-    private buildAreaSelectionCandidates(): TargetSelectionCandidate<Node>[] {
-        const candidates: TargetSelectionCandidate<Node>[] = [];
-
-        for (const hurtbox of EnemyRegistry.getTargetableTargets()) {
-            const targetNode = hurtbox.node;
-            if (!targetNode || !targetNode.isValid) {
-                continue;
+            if (dx * dx + dy * dy <= rangeSq) {
+                targets.push(targetNode);
             }
+        });
 
-            candidates.push({
-                target: targetNode,
-                worldPos: hurtbox.getWorldCenter(),
-            });
-        }
-
-        return candidates;
+        return targets;
     }
 }

@@ -3,6 +3,8 @@ import { Hurtbox } from '../enemy/base/Hurtbox';
 import { DamageChannel } from '../core/types/DamageChannel';
 import { matchesTargetQuery, TargetQueryFilter } from './TargetQuery';
 
+type TargetVisitor = (hurtbox: Hurtbox) => void;
+
 export class EnemyRegistry {
     private static hurtboxes: Map<Node, Hurtbox> = new Map();
 
@@ -30,9 +32,21 @@ export class EnemyRegistry {
         return this.queryTargets({ damageChannel: channel });
     }
 
+    public static forEachTargetableTarget(visitor: TargetVisitor): void {
+        this.forEachMatchingTarget({ requireTargetable: true }, visitor);
+    }
+
+    public static forEachDamageableTarget(channel: DamageChannel, visitor: TargetVisitor): void {
+        this.forEachMatchingTarget({ damageChannel: channel }, visitor);
+    }
+
     public static queryTargets(filter: TargetQueryFilter = {}): readonly Hurtbox[] {
         const activeTargets: Hurtbox[] = [];
+        this.forEachMatchingTarget(filter, (hurtbox) => activeTargets.push(hurtbox));
+        return activeTargets;
+    }
 
+    private static forEachMatchingTarget(filter: TargetQueryFilter, visitor: TargetVisitor): void {
         for (const [node, hurtbox] of this.hurtboxes) {
             if (!node.isValid || !hurtbox.isValid) {
                 this.hurtboxes.delete(node);
@@ -43,9 +57,7 @@ export class EnemyRegistry {
                 continue;
             }
 
-            activeTargets.push(hurtbox);
+            visitor(hurtbox);
         }
-
-        return activeTargets;
     }
 }

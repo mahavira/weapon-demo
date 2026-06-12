@@ -38,10 +38,12 @@ export class KnockbackCannonProjectile extends DirectHitProjectile {
 
         this.spawnImpactBurstVisual(hitWorldPos, impactRadius);
 
-        for (const hurtbox of EnemyRegistry.getDamageableTargets(DamageChannel.Area)) {
+        EnemyRegistry.forEachDamageableTarget(DamageChannel.Area, (hurtbox) => {
+            if (!this.attackContext) return;
+
             const targetNode = hurtbox.node;
             if (!targetNode || !targetNode.isValid || targetNode === this.attackContext.attackerNode) {
-                continue;
+                return;
             }
 
             const targetCenterWorldPos = hurtbox.getWorldCenter();
@@ -49,7 +51,7 @@ export class KnockbackCannonProjectile extends DirectHitProjectile {
             const combinedRadius = impactRadius + targetHitRadius;
             const centerDistanceSq = MathUtils.distanceSq2D(hitWorldPos, targetCenterWorldPos);
             if (centerDistanceSq > combinedRadius * combinedRadius) {
-                continue;
+                return;
             }
 
             const damageInfo = buildKnockbackCannonAreaDamage(
@@ -60,7 +62,7 @@ export class KnockbackCannonProjectile extends DirectHitProjectile {
                 edgeDamageScale
             );
             if (damageInfo.amount <= 0) {
-                continue;
+                return;
             }
 
             const hitInfo = new HitInfo({
@@ -71,7 +73,7 @@ export class KnockbackCannonProjectile extends DirectHitProjectile {
                 phase,
             });
             DamageResolver.applyDamage(hitInfo);
-        }
+        });
     }
 
     private applyConfiguredKnockback(hitWorldPos: Vec3): void {
@@ -96,21 +98,21 @@ export class KnockbackCannonProjectile extends DirectHitProjectile {
         }
 
         const radiusSq = knockbackRadius * knockbackRadius;
-        for (const hurtbox of EnemyRegistry.getDamageableTargets(DamageChannel.Projectile)) {
+        EnemyRegistry.forEachDamageableTarget(DamageChannel.Projectile, (hurtbox) => {
             const targetNode = hurtbox.node;
             if (!targetNode || !targetNode.isValid) {
-                continue;
+                return;
             }
 
             const targetCenterWorldPos = hurtbox.getWorldCenter();
             const distanceSq = MathUtils.distanceSq2D(hitWorldPos, targetCenterWorldPos);
             if (distanceSq > radiusSq) {
-                continue;
+                return;
             }
 
             const enemyMovement = targetNode.getComponent(EnemyMovement);
             if (!enemyMovement) {
-                continue;
+                return;
             }
 
             const appliedDistance = resolveKnockbackCannonDistance(
@@ -120,7 +122,7 @@ export class KnockbackCannonProjectile extends DirectHitProjectile {
                 knockbackRadius
             );
             enemyMovement.applyKnockback(projectileDirectionWorldVec, appliedDistance);
-        }
+        });
     }
 
     private spawnImpactBurstVisual(hitWorldPos: Vec3, impactRadius: number): void {

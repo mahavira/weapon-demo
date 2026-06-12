@@ -85,7 +85,7 @@ export class PiercingBeam extends AttackBase implements BeamRuntimeConfigReceive
         }
 
         this.cleanupRuntimeState();
-        this.node.destroy();
+        this.releaseAttackNode();
     }
 
     protected onDestroy(): void {
